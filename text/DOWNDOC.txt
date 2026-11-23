@@ -1,0 +1,8 @@
+   FILES YOU CAN DOWNLOAD
+   ----------------------
+TEST.TT1 - A test picture in ATASCII
+          graphics. Use ATASCII mode
+          (command A) to see it.
+
+In the File Area, use F to list files
+and D to download a full NAME.CTL.

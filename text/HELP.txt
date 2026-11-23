@@ -1,0 +1,58 @@
+MAIN MENU
+---------
+A-ASCII/ATASCII switch. Changes the
+  terminal control character set.
+B-Bulletin. Reprints the bulletin
+  shown after you log on.
+C-Caller list. Shows recent callers.
+F-File areas. Opens the file menu.
+G-Goodbye. Ends your call.
+H-Help. Prints this help file.
+L-Line feeds on/off. Enable this for
+  terminals needing an extra LF.
+M-Message areas. Opens the message
+  base menu.
+T-Time and date.
+W-Welcome. Reprints the welcome.
+X-Expert mode. Uses a short prompt.
+Y-Yell for the SysOp to chat.
+Z-Change user level (0=banned).
+  Requires level 9 SysOp access.
+?-Reprints the main menu.
+
+MESSAGE AREA
+------------
+E-Enter a message in the current
+  message base.
+J-Jump to another message base.
+  Only bases allowed by your access
+  level are listed.
+K-Kill a message you wrote. Levels
+  8 and 9 can moderate all messages.
+M-Modify a message you wrote. It
+  keeps its original number.
+Q-Quick scan. Lists subjects only.
+R-Read messages. A range may follow,
+  for example R 5-9.
+S-Summary scan. Lists sender,
+  recipient, and subject.
+X-Return to the main menu.
+?-Reprint the message-area menu.
+
+FILE AREA
+---------
+D-Download a listed file. Choose
+  text or XMODEM transfer.
+F-List files visible at your level.
+I-Information about available files.
+U-Upload a controlled file. Requires
+  level 8 or 9 moderator access.
+V-Delete a controlled file. Requires
+  level 8 or 9 moderator access.
+X-Return to the main menu.
+?-Reprint the file-area menu.
+
+CTRL<S> pauses a display or send.
+Any key resumes it. CTRL<X> aborts.
+<RETURN> cancels a pending function.
+

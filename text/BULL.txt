@@ -1,0 +1,10 @@
+       ***** SYSTEM BULLETIN *****
+
+Mutineer-eX 1.0.0 is ready for calls.
+
+This board provides message areas,
+file areas, caller information, and
+doors for Atari and ASCII terminals.
+
+Check this bulletin again for news
+and announcements from the SysOp.

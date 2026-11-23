@@ -1,0 +1,23 @@
+ ------- NEW USER INFORMATION ------
+ Mutineer-eX 1.0.0 runs on an Atari
+ computer, so some functions differ
+ from other bulletin board systems.
+ The 'A' Command toggles the ATARI
+ ASCII mode switch, and if you don't
+ have an ATARI, the BBS will not
+ allow you to enter ATARI mode.
+ (RETURN=13 ASCII,and 155 ATASCII)
+ Enter the 'M' Message Area. Use Q
+ to scan subjects and R to
+ retrieve messages.  When entering
+ message numbers, enter with
+ commas between message numbers.
+ EXAMPLE: 1,20,5.  Or use a hyphen
+ EXAMPLE: 1-5 to retrieve a range.
+ Use the 'H' (HELP) function if you
+ need more information.
+ Your name and 4 character password
+ are your account: use them every
+ time you call.
+ New accounts start at level 1.
+ The SysOp approves higher access.

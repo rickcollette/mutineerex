@@ -1,0 +1,13 @@
+     .oO-[ Mutineer-eX 1.0.0 ]-Oo.
+     .o        MAIN MENU       o.
+     .oO----------------------Oo.
+
+[A] ASCII/ATASCII    [B] Bulletin
+[C] Caller List      [D] Doors
+[F] File Areas       [G] Goodbye
+[H] Help File        [L] Line Feeds
+[M] Message Areas    [T] Time and Date
+[W] Welcome          [X] Expert Menu
+[Y] Yell for SysOp   [Z] User Levels
+[?] This Menu
+

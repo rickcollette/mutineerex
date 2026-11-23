@@ -1,0 +1,39 @@
+# Keep this repository limited to documentation and source code.
+# Everything is ignored first; directories are reopened so the allowed files
+# below can be discovered at any depth.
+*
+!*/
+
+# Repository metadata
+!.gitignore
+!VERSION
+!LICENSE
+!LICENSE.*
+
+# Documentation
+!*.md
+!*.txt
+!*.pdf
+
+# Source code and build scripts
+!*.bas
+!*.asm
+!*.inc
+!*.py
+!*.ps1
+!*.sh
+!*.bat
+!*.cmd
+!Makefile
+!makefile
+
+# Local/generated directories should never be traversed, even if they contain
+# files with an allowed extension.
+.exbasic-studio/
+build/
+disk/
+H/
+listings/
+original/
+tmp/
+__pycache__/

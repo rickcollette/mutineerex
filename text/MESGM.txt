@@ -1,0 +1,9 @@
+     .oO-[ MESSAGE AREAS ]-Oo.
+     .oO-------------------Oo.
+
+[E] Enter Message     [J] Jump Base
+[K] Kill Message      [M] Modify
+[Q] Quick Scan        [R] Read
+[S] Summary Scan      [X] Main Menu
+             [?] This Menu
+

@@ -1,0 +1,13 @@
+          Mutineer-eX 1.0.0
+
+Welcome to this Mutineer-eX board.
+
+Mutineer-eX is an exBASIC BBS for
+Atari 8-bit computers running exOS.
+
+Enter ? at the main menu for help.
+Use G when you are ready to log off.
+
+Enjoy your visit.
+
+
