@@ -55,7 +55,7 @@ ENDFUNC
 FUNC ShowSlotsWelcome()
   PRINT #ModemCh,
   PRINT #ModemCh; "+------------------------------------+"
-  PRINT #ModemCh; "|   Mutineer-eX 1.0.4 LUCKY SLOTS   |"
+  PRINT #ModemCh; "|   Mutineer-eX 1.0.3 LUCKY SLOTS   |"
   PRINT #ModemCh; "+------------------------------------+"
   PRINT #ModemCh; "THREE 7S PAY 20X. THREE BARS PAY 12X."
   PRINT #ModemCh; "THREE BELLS PAY 8X. ANY TRIPLE 5X."

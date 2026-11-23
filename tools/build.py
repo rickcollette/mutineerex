@@ -265,6 +265,13 @@ def compile_program(src, out, modules):
         # The message editor is just over the address-space limit when its
         # hottest paths are expanded to native 6502; bytecode is smaller.
         cmd.append("-no-native")
+    if src == "src/files_module.bas":
+        # The automatic optimizer probes six layouts.  Its native-all and
+        # hot-with-extended-instructions candidates cannot fit below $BC20,
+        # so they emit ld65 overflow errors before the successful candidate.
+        # Select that known-good candidate directly: one link, no false
+        # overflow diagnostics, and the same hot-path native code as before.
+        cmd += ["-native:hot", "-no-ext"]
     if src == "src/wfc.bas":
         # EOS keeps its cartridge mapped at $A000-$BFFF while starting WFC.
         # exBASIC allocates default string storage before BASIC can call the
