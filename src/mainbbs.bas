@@ -6,9 +6,8 @@ AttachModule(3)
 IF NOT LoadSystemMeta() THEN END
 MainBbsLoop()
 SaveSystemMeta()
-FileName$ = "D1:"
-IF StartOption(2) THEN FileName$ = "O:"
-FileName$ =+ "wfc.com"
+FileName$ = "D1:wfc.com"
+Q1 = ResolveCachePath()
 RunModule(FileName$, 1, "WFC")
 
 INCLUDE "clock.bas"

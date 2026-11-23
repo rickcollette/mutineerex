@@ -6,7 +6,9 @@ remms_boot_install
         cld
         jsr remms_raise_memlo
         jsr remms_publish_discovery
+        jsr remms_cache_install
         jsr remms_session_init
+remms_boot_install_done
         clc
         rts
 
@@ -17,6 +19,7 @@ remms_install
         jsr remms_refresh_handlers
         bcs remms_install_no_handler
         jsr remms_write_handlers
+        jsr remms_cache_install
         lda #REMMS_ERR_NONE
         sta remms_last_error
         clc
@@ -50,6 +53,7 @@ remms_install_cold
         lda #1
         sta remms_installed
         jsr remms_write_handlers
+        jsr remms_cache_install
         jsr remms_session_init
         clc
         rts

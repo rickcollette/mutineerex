@@ -17,6 +17,7 @@ Usage:  python tools/build.py [--no-disk]
   build/NHAND.SYS          FujiNet EOS device driver
   build/TDAPE.COM          transient APETime helper
   build/CONFIG.XEX         four-part administration console
+  build/RDCONF.XEX         RAM-disk capacity planner and file picker
   build/INIT.XEX           one-time board initialization
   disk/mutinrex-eos-v<VERSION>.atr  exOS work disk (native EOSFS v2 format)
   disk/mutinrex-sdx-v<VERSION>.atr  SpartaDOS X work disk (SDFS 2.1 format)
@@ -74,6 +75,38 @@ def read_version():
 VERSION = read_version()
 EOS_ATR_RELATIVE_PATH = "disk/%s-eos-v%s.atr" % (PRODUCT_ID, VERSION)
 SDX_ATR_RELATIVE_PATH = "disk/%s-sdx-v%s.atr" % (PRODUCT_ID, VERSION)
+SOURCE_VERSION = re.compile(rb"Mutineer-eX ([0-9]+\.[0-9]+\.[0-9]+)")
+
+
+def audit_source_versions():
+    """Keep compiled on-screen banners aligned with the release artifact."""
+    failures = []
+    source_root = os.path.join(ROOT, "src")
+    for name in sorted(os.listdir(source_root)):
+        if not name.lower().endswith(".bas"):
+            continue
+        filename = os.path.join(source_root, name)
+        with open(filename, "rb") as f:
+            contents = f.read()
+        for match in SOURCE_VERSION.finditer(contents):
+            found = match.group(1).decode("ascii")
+            if found != VERSION:
+                failures.append("src/%s displays %s" % (name, found))
+    text_root = os.path.join(ROOT, "text")
+    for name in sorted(os.listdir(text_root)):
+        if not name.lower().endswith(".txt"):
+            continue
+        filename = os.path.join(text_root, name)
+        with open(filename, "rb") as f:
+            contents = f.read()
+        for match in SOURCE_VERSION.finditer(contents):
+            found = match.group(1).decode("ascii")
+            if found != VERSION:
+                failures.append("text/%s displays %s" % (name, found))
+    if failures:
+        sys.exit("source banners do not match VERSION %s:\n  %s\n"
+                 "run tools/build_all.py so the release bump updates them" %
+                 (VERSION, "\n  ".join(failures)))
 
 
 def audit_branding():
@@ -144,7 +177,7 @@ EOS_CART_MEMTOP = 0x9C1F
 CONFIG_ARRAY_BYTES = 125 + 26 + 26
 CONFIG_HEAP_SAFETY = 1024
 WFC_ARRAY_BYTES = 1 + 1 + 26 + 26 + 13
-WFC_HEAP_RESERVE = 1500
+WFC_HEAP_RESERVE = 2300
 
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import atascii  # noqa: E402
@@ -158,6 +191,7 @@ PROGRAMS = [
     ("src/doors_module.bas", "build/DOORS.XEX", "doors.com", ["src/fixed_strings.asm"]),
     ("src/door_blackjack.bas", "build/BJACK.XEX", "bjack.com", ["src/fixed_strings.asm"]),
     ("src/door_slots.bas", "build/SLOTS.XEX", "slots.com", ["src/fixed_strings.asm"]),
+    ("src/rdconf.bas", "build/RDCONF.XEX", "rdconf.com", []),
     ("src/config.bas", "build/CONFIG.XEX", "config.com", []),
     ("src/init.bas", "build/INIT.XEX", "init.com", []),
 ]
@@ -191,6 +225,14 @@ EOS_SYSTEM_FILES = [
     ("eossys.sys", b"SET PATH=CAR:;D1:\x9bDEVICE JIFFY\x9b"),
     ("eosauto.bat", b"SET PATH=CAR:;D1:\x9b"),
 ]
+RAMCACHE_DEFAULT = (
+    "MUTINREX RAMCACHE 1\x9b"
+    "D1:wfc.com\x9bD1:mainbbs.com\x9bD1:message.com\x9b"
+    "D1:files.com\x9bD1:doors.com\x9bD1:bjack.com\x9bD1:slots.com\x9b" +
+    "".join("D1:%s.%s\x9b" % (name, extension)
+            for name in SCREENS for extension in ("TXT", "ATA"))
+).encode("latin-1")
+SHARED_CONFIG_FILES = [("RAMCACHE.CFG", RAMCACHE_DEFAULT)]
 
 
 def path(rel):
@@ -303,9 +345,8 @@ def verify_wfc_heap():
     free_start = int(match.group(1), 16)
     available = EOS_CART_MEMTOP + 1 - free_start
     before_buffer = available - WFC_ARRAY_BYTES
-    # module_env selects FRE()-1500 only above 1756; below that threshold it
-    # falls back to 256 bytes. Reject a WFC that silently loses the intended
-    # EOS reserve before it can allocate Buf.
+    # Every module keeps this transient headroom for manifest lookups and
+    # module handoff; WFC is the smallest-heap build and therefore the audit.
     if before_buffer <= WFC_HEAP_RESERVE + 256:
         sys.exit("WFC has only %d bytes before Buf under EOS; reduce its "
                  "linked image" % before_buffer)
@@ -315,6 +356,7 @@ def verify_wfc_heap():
 
 def main():
     audit_branding()
+    audit_source_versions()
     os.makedirs(path("build"), exist_ok=True)
     compile_remms()
     for src, out, _, modules in PROGRAMS:
@@ -385,6 +427,11 @@ def main():
             g.write(atascii.to_atari(f.read()))
         files.append(dest)
     for disk_name, contents in EOS_SYSTEM_FILES:
+        dest = os.path.join(stage, disk_name)
+        with open(dest, "wb") as g:
+            g.write(contents)
+        files.append(dest)
+    for disk_name, contents in SHARED_CONFIG_FILES:
         dest = os.path.join(stage, disk_name)
         with open(dest, "wb") as g:
             g.write(contents)

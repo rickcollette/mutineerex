@@ -9,7 +9,7 @@ it every day and what to do when something goes wrong.
 | Item | Notes |
 |------|-------|
 | Atari 8-bit computer with 48 KB or more, or an emulator | The exBASIC Studio emulator profile *Atari 800XL (NTSC)* is set up for Mutineer-eX |
-| exOS 0.4 cartridge | Its DOS gives the D: device with NOTE and POINT (needed by the message and caller files), the start-up batch, the clock, and an `RS232` command for a physical Atari 850 |
+| exOS 0.7 cartridge | Its DOS gives the D: device with NOTE and POINT (needed by the message and caller files), the start-up batch, the clock, and an `RS232` command for a physical Atari 850 |
 | An EOSFS v2 work disk | `disk/mutinrex-eos-v<VERSION>.atr`, volume `MUTINREX` |
 | An R: device | A preloaded emulator R:, an R-Verter using `RVRFULL.sys`/`RVRTWOW.sys`, or FujiNet using `NHAND.sys` |
 | A Hayes compatible modem | Real or emulated; Mutineer-eX sends `ATZ`, the init string, `ATA` to answer and drops DTR to hang up |
@@ -231,7 +231,8 @@ When CONFIG saves, it writes `D1:eossys.sys` and `D1:eosauto.bat`. exOS's
 native filesystem is case-sensitive, so these OS-owned startup names stay
 lowercase. The system file selects JIFFY for MANUAL, EOS/JIFFY and APETIME,
 or RTIME8 for R-TIME 8; loads the selected R-Verter/NHAND `.sys` backend;
-and adds `DEVICE RAMDISK` when setting 17 is on. A system-driver
+and adds `DEVICE RAMDISK` when setting 17 is on. The startup batch formats the
+disposable O: volume before copying the live programs and screens. A system-driver
 change takes effect after a cold restart. The batch file EOS runs
 when the computer starts (EOS does not run `AUTORUN.SYS`). Selecting
 RVRFULL, for example, adds `DEVICE D1:RVRFULL` to the system file. The
@@ -257,15 +258,15 @@ D1:wfc.com
    starts the BBS module chain. With setting 15 on, the WFC line
    is prefixed with `X`.
 
-With RAM cache on, the batch uses exOS's `cp` command to copy `wfc.com`,
-`mainbbs.com`, `message.com`, `files.com`, `doors.com`, `bjack.com`,
-`slots.com`, and the eight paired `.TXT`/`.ATA` screens to `O:`, sets the
-command search path to `CAR:;O:;D1:`, and
-starts `wfc.com`. EOS therefore starts the RAM copy when it is present and
-falls back to D1: if the RAM disk could not be installed. Each module also
-verifies that the complete five-program core set is present before using the
-cache, so an incomplete copy falls back to D1: for later module loading. The
-configured data, messages and downloads drives are not changed. In Altirra,
+With RAM cache on, run CONFIG item 5 (`RAMDISK FILES`) to open `RDCONF.COM`.
+It measures the installed O: volume, shows whether the selection fits, and
+allows individual files or the `.COM`, `.ATA`, `.TXT`, `.V52`, `.RIP`, and
+`.IG` groups to be toggled. The batch prints every copy as
+`COPYING source -> RAMDISK:file`, then loads REMMS's EOS-only CIO bridge.
+Shell commands use `O:` before that bridge and `DO:` afterward; exBASIC BBS
+programs use the installed `O:` device. A selected file that is missing from
+RAM fails visibly instead of silently falling back to D1. Configured data,
+messages, and downloads drives are not changed. In Altirra,
 select the 1088K memory configuration; this is verified to leave enough
 EOS-compatible banks for the complete cache. Some smaller expansion layouts
 are not recognized by EOS's RAM-disk driver.

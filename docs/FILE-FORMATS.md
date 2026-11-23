@@ -38,6 +38,15 @@ Written by CONFIG and read by the BBS and CONFIG
 The EOS start-up batch, written by CONFIG from its settings 13 to 17 (see the
 Sysop Guide, *Start-up with EOS*).
 
+## RAMCACHE.CFG (always D1:)
+
+Written by RDCONF. The first line is `MUTINREX RAMCACHE 1`; each following
+line is one exact source path selected for the volatile O: cache, for example
+`D1:mainbbs.com` or `D1:WELC.ATA`. Selection is authoritative: the BBS uses O:
+for a listed file and does not probe or fall back to its disk copy. RDCONF
+accounts for EOSFS data sectors, each file's extent-map sector, and directory
+growth before it allows the manifest and startup files to be saved.
+
 ## DOORS.DAT (data drive)
 
 Door catalog read by `DOORS.COM`, one ATASCII line per door:

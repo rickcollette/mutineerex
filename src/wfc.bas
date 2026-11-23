@@ -18,9 +18,8 @@ DO
   RemmsSaveSession()
   IF LoginCaller()
     RemmsSaveSession()
-    FileName$ = "D1:"
-    IF StartOption(2) THEN FileName$ = "O:"
-    FileName$ =+ "mainbbs.com"
+    FileName$ = "D1:mainbbs.com"
+    Q1 = ResolveCachePath()
     RunModule(FileName$, 3, "MAINBBS")
   ENDIF
   SaveSystemMeta()

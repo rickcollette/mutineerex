@@ -38,19 +38,16 @@ FUNC DoMainCommand(C)
     GetTime()
     PRINT #ModemCh; "TIME: "; NowTime$; "   DATE: "; NowDate$
   ELIF C = 77
-    FileName$ = "D1:"
-    IF StartOption(2) THEN FileName$ = "O:"
-    FileName$ =+ "message.com"
+    FileName$ = "D1:message.com"
+    Q1 = ResolveCachePath()
     RunModule(FileName$, 4, "MESSAGE")
   ELIF C = 70
-    FileName$ = "D1:"
-    IF StartOption(2) THEN FileName$ = "O:"
-    FileName$ =+ "files.com"
+    FileName$ = "D1:files.com"
+    Q1 = ResolveCachePath()
     RunModule(FileName$, 5, "FILES")
   ELIF C = 68
-    FileName$ = "D1:"
-    IF StartOption(2) THEN FileName$ = "O:"
-    FileName$ =+ "doors.com"
+    FileName$ = "D1:doors.com"
+    Q1 = ResolveCachePath()
     RunModule(FileName$, 6, "DOORS")
   ELIF C = 89
     Yell()

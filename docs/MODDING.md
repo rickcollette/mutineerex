@@ -40,7 +40,8 @@ free-sector count.
 The REMMS acceptance test defaults to the full source tree at
 `D:\ATARI\atari-mutineer` (override with `MUTINEER_ROOT`) and uses only
 `D:\ALTIRRA\Altirra64.exe`. It verifies the physical R: handler, REMMS E:/R:
-wrappers, public version 1.10, session contract 9 and `$3CFF` MEMLO.
+wrappers, public version 1.10, session contract 9 and the `REMMS_END` MEMLO
+published by the current build (`$3EAB` with the EOS O: bridge).
 The BBS acceptance additionally verifies `BBS.CFG`, the WFC dashboard,
 HATABS, REMMS installation state, and `BASIC_TOP <= MEMTOP`. The REMMS jump
 table uses the Atari BASIC USR ABI; BBS code must call it through
@@ -186,7 +187,7 @@ read through a full-size scratch string and clipped before it enters a
 compact field. Keep each buffer size and every assignment limit in sync.
 
 `main.bas` allocates `Buf` after the compact strings and fixed arrays and
-leaves 1500 bytes for function-local/compiler temporary strings. A normal
+leaves 2300 bytes for function-local/compiler temporary strings. A normal
 EOS launch fits with the cartridge mapped. `X D1:wfc.com` remains an
 optional way to add 8 KB to `Buf` for a larger message index or file
 chunk. If a new local or hidden string causes `ERROR- 2`, increase the

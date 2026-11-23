@@ -46,6 +46,7 @@ FUNC SelectTextFile()
     FileName$ =+ ".TXT"
     RawText = 1
   ENDIF
+  Q1 = ResolveCachePath()
 ENDFUNC
 
 FUNC ReadTextFile()

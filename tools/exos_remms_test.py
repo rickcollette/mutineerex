@@ -21,13 +21,13 @@ sys.path.insert(0, str(MUTINEER / "tools"))
 
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
-from run_wfc_dashboard_test import read_memory, read_screen, screen_to_text  # type: ignore  # noqa: E402
+from altirra_debug import read_memory, read_screen  # noqa: E402
+from run_wfc_dashboard_test import screen_to_text  # type: ignore  # noqa: E402
 
 import sdfs  # noqa: E402
 
 
 DRIVERS = ("RVRFULL", "RVRTWOW", "NHAND")
-BREAK_AFTER_INSTALL = 0x239A
 TEST_STUB = 0x9000
 
 
@@ -42,6 +42,9 @@ def labels(path: Path) -> dict[str, int]:
 
 def run_case(driver: str, work: Path, index: int) -> list[str]:
     failures: list[str] = []
+    symbols = labels(ROOT / "build" / "REMMS.lab")
+    break_after_install = symbols["REMMS_BOOT_INSTALL_DONE"]
+    expected_memlo = symbols["REMMS_END"]
     atr = work / (driver.lower() + ".atr")
     profile = work / (driver.lower() + ".ini")
     debug_log = work / (driver.lower() + ".log")
@@ -60,7 +63,7 @@ def run_case(driver: str, work: Path, index: int) -> list[str]:
         "/cart", str((ROOT / "EOS.car").resolve()),
         "/debug",
         "/debugcmd", ".logopen " + str(debug_log.resolve()),
-        "/debugcmd", f"bp ${BREAK_AFTER_INSTALL:04X}",
+        "/debugcmd", f"bp ${break_after_install:04X}",
         "/disk", str(atr.resolve()),
     ]
     proc = None
@@ -69,7 +72,7 @@ def run_case(driver: str, work: Path, index: int) -> list[str]:
         if not proc.wait_for_debugger_text("Breakpoint 0 set", 10):
             raise RuntimeError("install breakpoint was not armed")
         proc.debugger_command("g")
-        if not proc.wait_for_debugger_text(f"{BREAK_AFTER_INSTALL:04X}:", 90):
+        if not proc.wait_for_debugger_text(f"{break_after_install:04X}:", 90):
             raise RuntimeError("REMMS post-install breakpoint was not reached")
         time.sleep(0.5)
         discovery = read_memory(proc, 0x03E8, 14)
@@ -84,15 +87,17 @@ def run_case(driver: str, work: Path, index: int) -> list[str]:
             failures.append("REMMS 1.10 public block was not published")
         if session == 0 or read_memory(proc, session, 2) != bytes((77, 9)):
             failures.append("REMMS session contract 9 was not published")
-        if memlo != bytes((0xFF, 0x3C)):
-            failures.append(f"MEMLO was ${memlo[1]:02X}{memlo[0]:02X}, expected $3CFF")
+        if int.from_bytes(memlo, "little") != expected_memlo:
+            failures.append(
+                f"MEMLO was ${memlo[1]:02X}{memlo[0]:02X}, "
+                f"expected ${expected_memlo:04X}"
+            )
         if len(rslots) != 1:
             failures.append(f"expected one R: handler, found {len(rslots)}")
             _, screen = read_screen(proc)
             lines = [screen_to_text(screen[i:i + 40]).rstrip()
                      for i in range(0, len(screen), 40)]
             failures.append("screen: " + " | ".join(line for line in lines if line))
-        symbols = labels(ROOT / "build" / "REMMS.lab")
         install = symbols["REMMS_INSTALL"]
         stub = bytes((0x20, install & 0xFF, install >> 8,
                       0x4C, (TEST_STUB + 3) & 0xFF, (TEST_STUB + 3) >> 8))

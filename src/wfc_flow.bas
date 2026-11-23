@@ -2,7 +2,7 @@
 
 FUNC InitializeClock()
   IF Year <> 0 THEN RETURN
-  PRINT CHR$(125); "Mutineer-eX 1.0.0 WFC"
+  PRINT CHR$(125); "Mutineer-eX 1.0.3 WFC"
   IF CfgStatus = 170 THEN PRINT "NO "; CfgFile$; " - RUN INIT"
   IF CfgStatus <> 1 AND CfgStatus <> 170 THEN PRINT "INVALID "; CfgFile$; " - RUN INIT"
   St = 0
@@ -19,12 +19,13 @@ FUNC WfcDrawScreen()
   POKE 83, 39
   POKE 752, 1
   FileName$ = TextDrive$ : FileName$ =+ "WFC.ATA"
+  St = ResolveCachePath()
   CLOSE #FileCh
   OPEN #FileCh, 4, 0, FileName$
   Code = ERR()
   IF Code <> 1
     CLOSE #FileCh
-    PRINT CHR$(125); "Mutineer-eX 1.0.0 / REMMS WFC"
+    PRINT CHR$(125); "Mutineer-eX 1.0.3 / REMMS WFC"
     PRINT "MISSING "; FileName$; " ERROR "; Code
     RETURN
   ENDIF

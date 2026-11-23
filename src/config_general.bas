@@ -10,11 +10,13 @@ FUNC GeneralConfig()
     Choice = VAL(In$)
     IF In$ = "S"
       Status = SaveSettings()
-      IF Status = 1 THEN Status = WriteSystem()
-      IF Status = 1 THEN Status = WriteStartup()
       IF Status = 1
-        Changed = 0
-        PRINT "SETTINGS SAVED"
+        CLOSE #1
+        OPEN #1, 8, 0, "D1:RAMCACHE.APPLY"
+        Status = ERR()
+        IF Status = 1 THEN PRINT #1; "1"
+        CLOSE #1
+        IF Status = 1 THEN RUN "D1:rdconf.com"
       ELSE
         PRINT "SAVE ERROR "; Status
       ENDIF
@@ -84,91 +86,6 @@ FUNC BaudName(Code)
     IF BaudCodes(I) = Code THEN RETURN BaudRates(I)
   NEXT I
   RETURN 0
-ENDFUNC
-
-FUNC WriteStartup()
-  LOCAL Code, P
-  CLOSE #1
-  IF RDriver = 0 AND AutoStart = 0
-    XIO 33, #1, 0, 0, "D1:eosauto.bat"
-    RETURN 1
-  ENDIF
-  OPEN #1, 8, 0, "D1:eosauto.bat"
-  PRINT #1; "; Written by Mutineer-eX CONFIG"
-  PRINT #1; "SET PATH=CAR:;D1:"
-  IF AutoStart AND StartOption(2)
-    PRINT #1; "ECHO COPYING MUTINREX TO RAMDISK O:"
-    PRINT #1; "cp D1:wfc.com O:wfc.com"
-    PRINT #1; "cp D1:mainbbs.com O:mainbbs.com"
-    PRINT #1; "cp D1:message.com O:message.com"
-    PRINT #1; "cp D1:files.com O:files.com"
-    PRINT #1; "cp D1:doors.com O:doors.com"
-    PRINT #1; "cp D1:bjack.com O:bjack.com"
-    PRINT #1; "cp D1:slots.com O:slots.com"
-    S$ = "WFC|WELC|BULL|FUNC|HELP|MESGM|FILEM|NEWU"
-    DO
-      P = INSTR(S$, "|")
-      IF P
-        T$ = S$[1, P - 1]
-      ELSE
-        T$ = S$
-      ENDIF
-      PRINT #1; "cp "; TextDrive$; T$; ".TXT O:"; T$; ".TXT"
-      PRINT #1; "cp "; TextDrive$; T$; ".ATA O:"; T$; ".ATA"
-      IF NOT P THEN EXIT
-      S$ = S$[P + 1, LEN(S$) - P]
-    LOOP
-    PRINT #1; "SET PATH=CAR:;O:;D1:"
-  ENDIF
-  ' Current REMMS backends are EOS DEVICE drivers. The older Atari 850
-  ' bootstrap must run after boot; it hangs if loaded while EOSSYS is active.
-  IF RDriver = 1 THEN PRINT #1; "D1:rs232.com"
-  PRINT #1; "D1:remms.com"
-  IF AutoStart
-    IF StartOption(1) = 2 THEN PRINT #1; "D1:apetime.com >>D1:APETIME.TXT"
-    PRINT #1; "SET DAYTIME=1"
-    IF StartOption(1) > 0
-      PRINT #1; "DATE /T >>D1:BBSDATE.TXT"
-      PRINT #1; "TIME /T >>D1:BBSTIME.TXT"
-    ENDIF
-    IF StartOption(0)
-      IF StartOption(2)
-        PRINT #1; "X O:wfc.com"
-      ELSE
-        PRINT #1; "X D1:wfc.com"
-      ENDIF
-    ELSE
-      IF StartOption(2)
-        PRINT #1; "O:wfc.com"
-      ELSE
-        PRINT #1; "D1:wfc.com"
-      ENDIF
-    ENDIF
-  ENDIF
-  Code = ERR()
-  CLOSE #1
-  IF Code = 1 THEN Code = ERR()
-  RETURN Code
-ENDFUNC
-
-FUNC WriteSystem()
-  LOCAL Code
-  CLOSE #1
-  OPEN #1, 8, 0, "D1:eossys.sys"
-  PRINT #1; "SET PATH=CAR:;D1:"
-  IF StartOption(1) = 3
-    PRINT #1; "DEVICE RTIME8"
-  ELSE
-    PRINT #1; "DEVICE JIFFY"
-  ENDIF
-  IF StartOption(2) THEN PRINT #1; "DEVICE RAMDISK"
-  IF RDriver = 2 THEN PRINT #1; "DEVICE D1:RVRFULL"
-  IF RDriver = 3 THEN PRINT #1; "DEVICE D1:RVRTWOW"
-  IF RDriver = 4 THEN PRINT #1; "DEVICE D1:NHAND"
-  Code = ERR()
-  CLOSE #1
-  IF Code = 1 THEN Code = ERR()
-  RETURN Code
 ENDFUNC
 
 FUNC EditSetting(N)

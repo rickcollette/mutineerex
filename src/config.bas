@@ -37,13 +37,14 @@ ENDIF
 
 DO
   CLS
-  PRINT "     Mutineer-eX 1.0.0 CONFIG"
+  PRINT "     Mutineer-eX 1.0.3 CONFIG"
   PRINT "     ------------------------"
   PRINT
   PRINT " 1 GENERAL CONFIG"
   PRINT " 2 MESSAGE BASES"
   PRINT " 3 FILE AREAS"
   PRINT " 4 USER EDITOR"
+  PRINT " 5 RAMDISK FILES"
   PRINT
   PRINT " Q QUIT"
   PRINT
@@ -57,6 +58,13 @@ DO
     FileAreaManager()
   ELIF In$ = "4"
     UserEditor()
+  ELIF In$ = "5"
+    IF Changed
+      PRINT "SAVE GENERAL SETTINGS FIRST"
+      PAUSE 90
+    ELSE
+      RUN "D1:rdconf.com"
+    ENDIF
   ELIF In$ = "Q"
     IF NOT Changed THEN EXIT
     PRINT "QUIT WITH UNSAVED SETTINGS (Y/N) >";

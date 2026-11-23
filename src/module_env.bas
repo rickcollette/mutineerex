@@ -53,35 +53,9 @@ UserFile$ = DataDrive$ : UserFile$ =+ "USERS.DAT"
 SystemFile$ = DataDrive$ : SystemFile$ =+ "SYSTEM.MET"
 ActiveBase = -2
 
-' CONFIG can install EOS's O: RAM disk and copy the complete live program
-' set there. Do not select it unless all five core modules arrived; a missing or
-' undersized RAM disk then falls back to D1: instead of breaking the chain.
-IF StartOption(2)
-  FileName$ = "O:wfc.com"
-  CLOSE #FileCh : OPEN #FileCh, 4, 0, FileName$
-  StartOption(2) = ERR() = 1 : CLOSE #FileCh
-ENDIF
-IF StartOption(2)
-  FileName$ = "O:mainbbs.com"
-  OPEN #FileCh, 4, 0, FileName$
-  StartOption(2) = ERR() = 1 : CLOSE #FileCh
-ENDIF
-IF StartOption(2)
-  FileName$ = "O:message.com"
-  OPEN #FileCh, 4, 0, FileName$
-  StartOption(2) = ERR() = 1 : CLOSE #FileCh
-ENDIF
-IF StartOption(2)
-  FileName$ = "O:files.com"
-  OPEN #FileCh, 4, 0, FileName$
-  StartOption(2) = ERR() = 1 : CLOSE #FileCh
-ENDIF
-IF StartOption(2)
-  FileName$ = "O:doors.com"
-  OPEN #FileCh, 4, 0, FileName$
-  StartOption(2) = ERR() = 1 : CLOSE #FileCh
-ENDIF
-IF StartOption(2) THEN TextDrive$ = "O:"
+' CONFIG formats EOS's O: drive and copies only the
+' sources selected in D1:RAMCACHE.CFG.  ramcache.bas resolves every access
+' against that manifest; selection is authoritative and never a probe/fallback.
 FileName$ = ""
 
 ' Allocate only the large work areas used by this independently loaded
@@ -100,11 +74,15 @@ DATA MonthDays() BYTE = 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 
 IF FRE() > 32000
   BufSize = 30000
-ELIF FRE() > 1756
-  BufSize = FRE() - 1500
+ELIF FRE() > 2556
+  ' Manifest lookup, module progress text, and the resident EOS O: bridge all
+  ' need transient string/compiler headroom during every module transition.
+  BufSize = FRE() - 2300
 ELSE
   ' A 256-byte buffer is enough for the WFC screens and caller records and
   ' avoids unsigned wraparound when the EOS cartridge leaves little memory.
   BufSize = 256
 ENDIF
 DIM Buf(BufSize) BYTE
+
+INCLUDE "ramcache.bas"

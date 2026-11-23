@@ -110,14 +110,3 @@ remms_rip_put_copy_iocb
         dta b(0,0)
 REMMS_EMBED = 1
         icl '..\td\tdclock.asm'
-
-REMMS_END
-
-; SpartaDOS X runs binary load files after loading. Keep the resident API jump
-; table from being executed as a program by providing a harmless run stub.
-; Page six is outside BASIC's allocated program/string area, so the menu
-; sender lives here without raising MEMLO or consuming the $3CFF resident gap.
-
-.ifndef REMMS_RELOC
-        icl 'remms_text_file.asm'
-.endif

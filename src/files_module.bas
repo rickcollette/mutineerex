@@ -7,14 +7,12 @@ IF NOT LoadSystemMeta() THEN END
 FileLoop()
 IF Lost
   SaveSystemMeta()
-  FileName$ = "D1:"
-  IF StartOption(2) THEN FileName$ = "O:"
-  FileName$ =+ "wfc.com"
+  FileName$ = "D1:wfc.com"
+  Q1 = ResolveCachePath()
   RunModule(FileName$, 1, "WFC")
 ENDIF
-FileName$ = "D1:"
-IF StartOption(2) THEN FileName$ = "O:"
-FileName$ =+ "mainbbs.com"
+FileName$ = "D1:mainbbs.com"
+Q1 = ResolveCachePath()
 RunModule(FileName$, 3, "MAINBBS")
 
 INCLUDE "clock.bas"

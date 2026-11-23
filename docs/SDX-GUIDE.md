@@ -34,5 +34,5 @@ python tools/build_all.py --bump none
 ```
 
 The build validates both filesystems. The automated cold-boot and REMMS
-runtime suites currently execute against the EOS image; the SDX image receives
+runtime suites execute against both images; the SDX image receives
 structural SDFS validation and contains the same compiled program binaries.

@@ -28,3 +28,13 @@ REMMS_PAGER_KEY_OTHER      = 7
         icl 'remms_pager.asm'
         icl 'remms_handlers.asm'
         icl 'remms_data.asm'
+        icl 'remms_eos_cache.asm'
+
+REMMS_END
+
+; SpartaDOS X runs binary load files after loading. Keep the resident API jump
+; table from being executed as a program by providing a harmless run stub.
+; Page six is outside BASIC's allocated program/string area.
+.ifndef REMMS_RELOC
+        icl 'remms_text_file.asm'
+.endif

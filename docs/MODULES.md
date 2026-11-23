@@ -29,13 +29,15 @@ D1:remms.com
 D1:wfc.com
 ```
 
-CONFIG setting 17 can add EOS's `O:` RAM disk. At cold startup,
-`eosauto.bat` uses `cp` to copy the five core modules, the bundled doors and all
-`.TXT`/`.ATA` screens to it,
-then searches `O:` before D1: for WFC and starts all later modules from RAM.
+CONFIG setting 17 can add EOS's `O:` RAM disk. RDCONF selects individual
+cache files or whole `.COM`, `.ATA`, `.TXT`, `.V52`, `.RIP`, and `.IG` groups.
+At cold startup, `eosauto.bat` uses `cp` to populate the selected set and
+starts selected modules from RAM.
 Database, message, and file area storage stays on its configured physical
-drive. Each module validates the complete cached program set before selecting
-`O:` and falls back to D1: if the copy is incomplete. Use compatible PORTB/XE
+drive. REMMS installs an EOS-only CIO `O:` bridge for exBASIC; EOS shell
+commands issued after REMMS is resident use `DO:` for that same drive.
+The module chain does not silently fall back to D1 if a cached copy is missing.
+Use compatible PORTB/XE
 extended RAM; Altirra 1088K is the verified configuration.
 
 `tools/build.py` assembles REMMS from `RESOURCES/REMMS/src/remms_sdx.asm` with

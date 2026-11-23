@@ -183,11 +183,12 @@ ENDFUNC
 
 FUNC RunModule(Path$, App, Module$)
   LOCAL K
+  LOCAL Source$
   NextApp = App
   RemmsSaveSession()
   POKE RemmsSession + 161, App
   PRINT #ModemCh,
-  PRINT #ModemCh; "Loading "; Module$; "... ";
+  PRINT #ModemCh; "Preparing "; Module$; "... ";
   FOR K = 1 TO 12
     IF K MOD 4 = 1 THEN PUT #ModemCh, 124
     IF K MOD 4 = 2 THEN PUT #ModemCh, 47
@@ -198,7 +199,14 @@ FUNC RunModule(Path$, App, Module$)
   NEXT K
   PUT #ModemCh, 124
   PRINT #ModemCh,
-  PAUSE 15
+  Source$ = Path$
+  IF LEN(Path$) > 2 AND UCASE$(Path$[1, 2]) = "O:"
+    Source$ = "RAMDISK:"
+    IF LEN(Path$) > 2 THEN Source$ =+ Path$[3, LEN(Path$) - 2]
+  ENDIF
+  PRINT #ModemCh; "Loading "; Module$; " from "; Source$; "..."
+  ' Leave the real load message visible while RUN blocks in filesystem I/O.
+  PAUSE 5
   CLOSE #ModemCh
   CLOSE #KbdCh
   RUN Path$

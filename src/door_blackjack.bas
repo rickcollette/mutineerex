@@ -35,9 +35,8 @@ IF NOT Lost
   PRINT #ModemCh; "LEAVING BLACKJACK WITH "; Bankroll; " CREDITS."
 ENDIF
 
-FileName$ = "D1:"
-IF StartOption(2) THEN FileName$ = "O:"
-FileName$ =+ "doors.com"
+FileName$ = "D1:doors.com"
+Q1 = ResolveCachePath()
 RunModule(FileName$, 6, "DOORS")
 
 INCLUDE "clock.bas"
@@ -59,7 +58,7 @@ ENDFUNC
 FUNC ShowBlackjackWelcome()
   PRINT #ModemCh,
   PRINT #ModemCh; "+------------------------------------+"
-  PRINT #ModemCh; "|    Mutineer-eX 1.0.0 BLACKJACK    |"
+  PRINT #ModemCh; "|    Mutineer-eX 1.0.3 BLACKJACK    |"
   PRINT #ModemCh; "+------------------------------------+"
   PRINT #ModemCh; "BLACKJACK PAYS 3 TO 2."
   PRINT #ModemCh; "DEALER STANDS ON 17."

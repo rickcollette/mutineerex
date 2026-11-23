@@ -30,9 +30,10 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
    the EOS device drivers `RVRFULL.sys`, `RVRTWOW.sys` and `NHAND.sys`.
    CONFIG item 16 can select manual entry, APETime, the current
    JIFFY value, or an R-Time 8 and rewrites the clock setup automatically.
-   CONFIG item 17 can use exOS's `O:` RAM disk and cache the five core
-   modules, bundled doors and all text screens there; Altirra 1088K is recommended.
-2. Mount the image as D1: in an exOS 0.4 machine. Use CONFIG item 13 to
+   CONFIG item 17 can use exOS's `O:` RAM disk; CONFIG item 5 opens RDCONF's
+   capacity-aware individual and extension-group cache picker. Altirra 1088K
+   is recommended.
+2. Mount the image as D1: in an exOS 0.7 machine. Use CONFIG item 13 to
    select a preloaded R:, full-handshake R-Verter, two-wire R-Verter, or
    FujiNet/NHAND backend, then cold-restart so exOS can load the device.
 3. Type `D1:/init.com` once. It writes the default configuration, a 100-sector
@@ -54,14 +55,14 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `src/door_blackjack.bas`, `src/door_slots.bas`, `text/DOORS.dat` | Blackjack and Lucky Slots doors plus their catalog |
 | `src/remms.bas`, `RESOURCES/REMMS/` | exBASIC client and full REMMS 1.10/session-9 source, including all current communications drivers |
 | `src/fixed_strings.asm` | Compact string storage plus the exBASIC-to-REMMS USR ABI adapters shared by the modules |
-| `src/config.bas`, `src/config_*.bas` | CONFIG administration console and its four managers |
+| `src/config.bas`, `src/config_*.bas`, `src/rdconf.bas` | CONFIG administration console, its four managers, and the offline RAM-disk planner/picker |
 | `src/init.bas` | One-time INIT program for a new board |
 | `lib/settings.bas` | Settings shared by the BBS and CONFIG (`D1:BBS.CFG`) |
 | `text/*.txt`, `text/*.ata` | Paired ASCII and native ATASCII text screens; TEST.UDL.txt is the sample download source |
 | `text/FILES.dat` | Download names and descriptions used by the 40-column categorized file list |
 | `text/BJHI10.txt`, `text/SLOTHI10.txt` | Persistent top-ten score files for the bundled game doors |
 | `tools/build.py` | Builds the programs plus EOSFS and SDX disk images; also emits complete WFC debugger maps as `build/WFC.lbl` and `build/WFC.lst` |
-| `tools/build_all.py` | Increments `VERSION` (patch by default), builds both variants, validates both ATRs, and runs both emulator suites against EOS |
+| `tools/build_all.py` | Increments `VERSION` (patch by default), builds both variants, validates both ATRs, and runs the EOS/SDX driver, cold-boot, RAM-disk, and TCP caller suites |
 | `tools/release.py` | Builds, validates, tags, pushes and publishes both versioned ATRs as one GitHub release |
 | `VERSION` | Mutineer-eX product and release-artifact version |
 | `tools/atascii.py` | Converts text screens between PC text and ATASCII |
@@ -70,10 +71,12 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `tools/carfs.py` | List and extract the CAR: files of an EOS cartridge image |
 | `drivers/RS232.COM` | Legacy Atari 850 post-boot bootstrap; separate from the three current EOS-native REMMS backends |
 | `tools/exos_remms_test.py` | Hidden Altirra/debugger acceptance for every EOS-native REMMS backend |
-| `tools/exos_bbs_test.py` | Persistent EOSFS cold-boot acceptance for WFC with no R: and with all three EOS backends |
-| `EOS.car` | Verified exOS v0.4 release cartridge used by emulator smoke tests |
-| `RESOURCES/EOSTK.atr` | Verified exOS v0.4 toolkit; the build extracts `apetime.com` from it |
-| `RESOURCES/EOSMAINT.atr`, `RESOURCES/SHA256SUMS.txt` | exOS v0.4 maintenance image and release checksums |
+| `tools/exos_bbs_test.py`, `tools/sdx_bbs_test.py` | Persistent EOSFS/SDFS cold-boot acceptance for WFC with no R: and with all three current backends |
+| `tools/eos_ramdisk_test.py` | Formats and catalogs O:, removes every D1 core module name, and proves WFC boots with the RAM-cache flag active |
+| `tools/eos_telnet_test.py`, `tools/sdx_telnet_test.py` | Real NHAND/FujiNet TCP registration and MESSAGE/MAINBBS module-chain journeys; the EOS journey removes D1 fallbacks and runs through O: |
+| `EOS.car` | Verified exOS v0.7 release cartridge used by emulator smoke tests |
+| `RESOURCES/EOSTK.atr` | Verified exOS v0.7 toolkit; the build extracts `apetime.com` from it |
+| `RESOURCES/EOSMAINT.atr`, `RESOURCES/SHA256SUMS.txt` | exOS v0.7 maintenance image and release checksums |
 | `original/` | The files of the 1983 disk, as extracted |
 | `listings/` | Listings of the original Atari BASIC programs |
 | `disk/mutinrex-eos-v<VERSION>.atr` | The versioned exOS work disk (EOSFS v2 revision `$47`, volume `MUTINREX`) |
@@ -96,8 +99,8 @@ From a clean worktree run:
 python tools/release.py
 ```
 
-The script rebuilds and checks both images, runs both EOS emulator acceptance
-suites, creates `v<VERSION>`, atomically pushes the current branch and tag to
+The script rebuilds and checks both images, runs the complete EOS and SDX
+acceptance matrix, creates `v<VERSION>`, atomically pushes the current branch and tag to
 `origin`, and publishes both ATRs plus `SHA256SUMS.txt` on GitHub. Use
 `--dry-run` to perform the local build/package and print the remote commands,
 or `--notes-file PATH`, `--draft`, and `--prerelease` when needed. It refuses

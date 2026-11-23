@@ -84,7 +84,7 @@ Current no-driver cold-boot values after WFC reaches its dashboard are:
 EXB_FREE   $8726
 BASIC_TOP  $9744
 MEMTOP     $9C1F
-MEMLO      $3CFF
+MEMLO      $3EAB
 RUNAD      $40CE
 SAVMSC     $9C40
 ```
@@ -197,7 +197,7 @@ watchpoints, REMMS trace symbols, or the native adapter addresses instead.
 | `$1E00-$1E3B` | REMMS public API jump table |
 | `$1E60-$1E9F` | REMMS public state block |
 | `$1EB0-$200F` | REMMS session block, contract version 9 |
-| `$3CFF` | first byte after the REMMS resident allocation |
+| `$3EAB` | first byte after the current REMMS resident allocation (`REMMS_END`) |
 | `$A000-$BFFF` | mapped 8 KiB EOS cartridge bank |
 | `$D01F` | `CONSOL` hardware register |
 | `$D40B` | ANTIC `VCOUNT` |

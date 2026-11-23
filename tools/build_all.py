@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Increment VERSION, build every artifact, and run the full test suite.
+"""Increment VERSION, build both OS variants, and run the full test suite.
 
 The default is a patch release bump. Use ``--bump minor`` or
 ``--bump major`` for other release types, and ``--bump none`` to rebuild the
@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 VERSION_FILE = ROOT / "VERSION"
 PRODUCT_ID = "mutinrex"
+SOURCE_VERSION = re.compile(r"(Mutineer-eX )[0-9]+\.[0-9]+\.[0-9]+")
 
 
 class BuildError(RuntimeError):
@@ -56,6 +57,21 @@ def write_version(version: str) -> None:
     VERSION_FILE.write_text(version + "\n", encoding="ascii", newline="\n")
 
 
+def sync_source_versions(version: str) -> dict[Path, bytes]:
+    """Update maintained source/screen banners and retain rollback contents."""
+    originals: dict[Path, bytes] = {}
+    sources = list((ROOT / "src").glob("*.bas"))
+    sources += list((ROOT / "text").glob("*.txt"))
+    for source in sorted(sources):
+        original = source.read_bytes()
+        text = original.decode("ascii")
+        updated = SOURCE_VERSION.sub(r"\g<1>" + version, text)
+        if updated != text:
+            originals[source] = original
+            source.write_text(updated, encoding="ascii", newline="")
+    return originals
+
+
 def build_and_test(version: str, skip_runtime_tests: bool) -> tuple[Path, Path]:
     run([sys.executable, "tools/build.py"])
     eos_atr = ROOT / "disk" / ("%s-eos-v%s.atr" % (PRODUCT_ID, version))
@@ -67,6 +83,11 @@ def build_and_test(version: str, skip_runtime_tests: bool) -> tuple[Path, Path]:
     if not skip_runtime_tests:
         run([sys.executable, "tools/exos_remms_test.py"])
         run([sys.executable, "tools/exos_bbs_test.py"])
+        run([sys.executable, "tools/rdconf_test.py"])
+        run([sys.executable, "tools/eos_ramdisk_test.py"])
+        run([sys.executable, "tools/eos_telnet_test.py"])
+        run([sys.executable, "tools/sdx_bbs_test.py"])
+        run([sys.executable, "tools/sdx_telnet_test.py"])
     return eos_atr, sdx_atr
 
 
@@ -90,6 +111,7 @@ def main() -> int:
     args = parse_args()
     original = ""
     changed = False
+    source_originals: dict[Path, bytes] = {}
     try:
         original = read_version()
         version = next_version(original, args.bump)
@@ -99,11 +121,21 @@ def main() -> int:
             print("VERSION: %s -> %s" % (original, version), flush=True)
         else:
             print("VERSION: %s (unchanged)" % version, flush=True)
+        source_originals = sync_source_versions(version)
+        if source_originals:
+            print("Updated %d source banner(s) to %s" %
+                  (len(source_originals), version), flush=True)
         atrs = build_and_test(version, args.skip_runtime_tests)
         for atr in atrs:
             print("Built and validated " + str(atr.relative_to(ROOT)))
         return 0
     except (BuildError, OSError) as exc:
+        for source, contents in source_originals.items():
+            try:
+                source.write_bytes(contents)
+            except OSError as restore_error:
+                print("Could not restore %s: %s" % (source, restore_error),
+                      file=sys.stderr)
         if changed:
             try:
                 write_version(original)

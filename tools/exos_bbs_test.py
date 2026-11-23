@@ -21,7 +21,7 @@ sys.path.insert(0, str(MUTINEER / "tools"))
 
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
-from run_wfc_dashboard_test import (  # type: ignore  # noqa: E402
+from altirra_debug import (  # noqa: E402
     read_memory as alt_read_memory,
     read_screen as alt_read_screen,
 )

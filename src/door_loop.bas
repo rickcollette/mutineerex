@@ -29,7 +29,7 @@ ENDFUNC
 FUNC ShowDoors()
   LOCAL Code, Count
   PRINT #ModemCh,
-  PRINT #ModemCh; ".oO-[ Mutineer-eX 1.0.0 DOORS ]-Oo."
+  PRINT #ModemCh; ".oO-[ Mutineer-eX 1.0.3 DOORS ]-Oo."
   PRINT #ModemCh; ".o  KEY  DOOR                    o."
   PRINT #ModemCh; ".oO----------------------------Oo."
   Code = OpenDoorCatalog()
@@ -71,18 +71,9 @@ FUNC FindDoor(Key$)
 ENDFUNC
 
 FUNC ResolveDoorPath()
-  LOCAL Code
   FileName$ = Spec$
-  IF INSTR(FileName$, ":") > 0 THEN RETURN 1
-  IF StartOption(2)
-    FileName$ = "O:" : FileName$ =+ Spec$
-    CLOSE #FileCh
-    OPEN #FileCh, 4, 0, FileName$
-    Code = ERR()
-    CLOSE #FileCh
-    IF Code = 1 THEN RETURN 1
-  ENDIF
-  FileName$ = "D1:" : FileName$ =+ Spec$
+  IF INSTR(FileName$, ":") = 0 THEN FileName$ = "D1:" : FileName$ =+ Spec$
+  Q1 = ResolveCachePath()
   RETURN 1
 ENDFUNC
 

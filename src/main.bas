@@ -94,7 +94,7 @@ DATA MonthDays() BYTE = 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 IF FRE() > 32000
   BufSize = 30000
 ELSE
-  BufSize = FRE() - 1500
+  BufSize = FRE() - 2300
 ENDIF
 DIM Buf(BufSize) BYTE
 
