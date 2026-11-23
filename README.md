@@ -63,7 +63,7 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `text/BJHI10.txt`, `text/SLOTHI10.txt` | Persistent top-ten score files for the bundled game doors |
 | `tools/build.py` | Builds the programs plus EOSFS and SDX disk images; also emits complete WFC debugger maps as `build/WFC.lbl` and `build/WFC.lst` |
 | `tools/build_all.py` | Increments `VERSION` (patch by default), builds both variants, validates both ATRs, and runs the EOS/SDX driver, cold-boot, RAM-disk, and TCP caller suites |
-| `tools/release.py` | Builds, validates, tags, pushes and publishes both versioned ATRs as one GitHub release |
+| `tools/release.py` | Bumps the version, validates both platforms, creates the release commit/tag, pushes, and publishes both ATRs plus checksums |
 | `VERSION` | Mutineer-eX product and release-artifact version |
 | `tools/atascii.py` | Converts text screens between PC text and ATASCII |
 | `tools/atrx.py`, `tools/detok.py` | Extract files from a DOS 2 ATR and list tokenized Atari BASIC programs |
@@ -73,7 +73,7 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `tools/exos_remms_test.py` | Hidden Altirra/debugger acceptance for every EOS-native REMMS backend |
 | `tools/exos_bbs_test.py`, `tools/sdx_bbs_test.py` | Persistent EOSFS/SDFS cold-boot acceptance for WFC with no R: and with all three current backends |
 | `tools/eos_ramdisk_test.py` | Formats and catalogs O:, removes every D1 core module name, and proves WFC boots with the RAM-cache flag active |
-| `tools/eos_telnet_test.py`, `tools/sdx_telnet_test.py` | Real NHAND/FujiNet TCP registration and MESSAGE/MAINBBS module-chain journeys; the EOS journey removes D1 fallbacks and runs through O: |
+| `tools/eos_telnet_test.py`, `tools/sdx_telnet_test.py`, `tools/sdx_ramdisk_telnet_test.py` | Real NHAND/FujiNet TCP registration and MESSAGE/MAINBBS module-chain journeys, including no-D1-fallback RAM-disk paths on EOS and SDX |
 | `EOS.car` | Verified exOS v0.7 release cartridge used by emulator smoke tests |
 | `RESOURCES/EOSTK.atr` | Verified exOS v0.7 toolkit; the build extracts `apetime.com` from it |
 | `RESOURCES/EOSMAINT.atr`, `RESOURCES/SHA256SUMS.txt` | exOS v0.7 maintenance image and release checksums |
@@ -84,28 +84,22 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 
 ## Publishing a release
 
-Prepare a patch release, including the version increment and complete test
-matrix, then commit the resulting source and `VERSION` changes:
-
-```
-python tools/build_all.py
-```
-
-Use `--bump minor`, `--bump major`, or `--bump none` when appropriate. Then
-make sure `gh auth status` shows the GitHub account that owns the repository.
-From a clean worktree run:
+Commit the feature/fix changes to publish, make sure `gh auth status` shows the
+GitHub account that owns the repository, and run from a clean worktree:
 
 ```
 python tools/release.py
 ```
 
-The script rebuilds and checks both images, runs the complete EOS and SDX
-acceptance matrix, creates `v<VERSION>`, atomically pushes the current branch and tag to
-`origin`, and publishes both ATRs plus `SHA256SUMS.txt` on GitHub. Use
-`--dry-run` to perform the local build/package and print the remote commands,
-or `--notes-file PATH`, `--draft`, and `--prerelease` when needed. It refuses
-dirty trees, conflicting tags, non-fast-forward branches, and existing
-releases rather than overwriting them.
+The script increments the patch version by default, synchronizes maintained
+version banners, rebuilds and checks both images, runs the complete EOS and SDX
+acceptance matrix, commits the version change, creates `v<VERSION>`, atomically
+pushes the current branch and tag to `origin`, and publishes both ATRs plus
+`SHA256SUMS.txt` on GitHub. Use `--bump minor`, `--bump major`, or `--bump none`
+when appropriate. Use `--dry-run` to perform the local build/package, print the
+remote commands, and restore the source version afterward. The script refuses
+dirty trees, conflicting tags, non-fast-forward branches, and existing releases
+rather than overwriting them.
 
 ## Status
 

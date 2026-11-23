@@ -14,7 +14,8 @@ Failed login loops inside WFC; MAINBBS returns to WFC after goodbye or a
 lost carrier.
 ```
 
-`RUN "D1:NAME.COM"` (or `RUN "O:NAME.COM"` with the CONFIG RAM cache) replaces the current executable. The modules are linked
+`RUN "D1:NAME.COM"` (or the explicit `O:` EOS / `DO:` SDX target selected by
+RDCONF) replaces the current executable. The modules are linked
 at `$4000`, above REMMS 1.10 (`$1E00` through `$3CFE`). CONFIG and
 INIT remain at `$2000`; run them before REMMS, or after quitting WFC and then
 cold-restart before starting the BBS again.
@@ -29,13 +30,14 @@ D1:remms.com
 D1:wfc.com
 ```
 
-CONFIG setting 17 can add EOS's `O:` RAM disk. RDCONF selects individual
+CONFIG setting 17 enables the platform RAM cache. RDCONF selects individual
 cache files or whole `.COM`, `.ATA`, `.TXT`, `.V52`, `.RIP`, and `.IG` groups.
 At cold startup, `eosauto.bat` uses `cp` to populate the selected set and
 starts selected modules from RAM.
 Database, message, and file area storage stays on its configured physical
-drive. REMMS installs an EOS-only CIO `O:` bridge for exBASIC; EOS shell
-commands issued after REMMS is resident use `DO:` for that same drive.
+drive. REMMS installs an EOS-only CIO `O:` bridge for exBASIC. SpartaDOS X
+already exposes shell drive O through the D: CIO handler, so runtime mappings
+use `DO:` while SDX shell commands use `O:`.
 The module chain does not silently fall back to D1 if a cached copy is missing.
 Use compatible PORTB/XE
 extended RAM; Altirra 1088K is the verified configuration.

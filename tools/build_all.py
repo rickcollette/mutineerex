@@ -84,10 +84,14 @@ def build_and_test(version: str, skip_runtime_tests: bool) -> tuple[Path, Path]:
         run([sys.executable, "tools/exos_remms_test.py"])
         run([sys.executable, "tools/exos_bbs_test.py"])
         run([sys.executable, "tools/rdconf_test.py"])
+        run([sys.executable, "tools/sdx_rdconf_test.py"])
+        run([sys.executable, "tools/sdx_rdconf_planner_test.py"])
         run([sys.executable, "tools/eos_ramdisk_test.py"])
         run([sys.executable, "tools/eos_telnet_test.py"])
         run([sys.executable, "tools/sdx_bbs_test.py"])
+        run([sys.executable, "tools/sdx_ramdisk_test.py"])
         run([sys.executable, "tools/sdx_telnet_test.py"])
+        run([sys.executable, "tools/sdx_ramdisk_telnet_test.py"])
     return eos_atr, sdx_atr
 
 
@@ -143,6 +147,17 @@ def main() -> int:
             except OSError as restore_error:
                 print("Could not restore VERSION: " + str(restore_error),
                       file=sys.stderr)
+            else:
+                # build.py keeps only the declared version's two ATRs.  A
+                # failed bumped test run has already built the candidate pair,
+                # so regenerate the restored version and remove that failed
+                # candidate from disk/ as part of rollback.
+                result = subprocess.run(
+                    [sys.executable, "tools/build.py"], cwd=ROOT
+                )
+                if result.returncode:
+                    print("Could not restore the %s disk images" % original,
+                          file=sys.stderr)
         print("build-all: " + str(exc), file=sys.stderr)
         return 1
 

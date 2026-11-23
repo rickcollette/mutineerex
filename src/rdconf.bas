@@ -1,5 +1,5 @@
 ' ====================================================================
-' RDCONF - offline EOS RAM-disk cache planner and multi-select editor
+' RDCONF - EOS/SDX RAM-disk cache planner and multi-select editor
 ' ====================================================================
 
 INCLUDE "settings.bas"
@@ -11,11 +11,12 @@ DIM Selected(95) BYTE
 DIM IoBuf(254) BYTE
 DIM Count, Status, K, J, G, Page, Choice, Capacity, Needed, Saved, Code
 DIM ExistingCount, ExistingUsed, FreeSectors, Got, Remain, P, C
-DIM WfcRam, RemmsRam, Rs232Ram, ApeRam
+DIM WfcRam, RemmsRam, Rs232Ram, ApeRam, DriverRam, IsSdx
 DIM In$, S$, T$, F$, Name$, Spec$, Ext$, Drive$
 
 InitSettings()
 Status = LoadSettings()
+IsSdx = DetectSdx()
 GRAPHICS 0
 POKE 82, 1
 CLOSE #1
@@ -62,6 +63,49 @@ LOOP
 RUN "D1:config.com"
 END
 
+FUNC DetectSdx()
+  LOCAL Result
+  CLOSE #3
+  OPEN #3, 4, 0, "D1:SDX.ENV"
+  Result = ERR() = 1
+  CLOSE #3
+  RETURN Result
+ENDFUNC
+
+FUNC ParseCacheLine()
+  LOCAL Q, Ch
+  F$ = S$ : Drive$ = ""
+  Q = INSTR(S$, "|")
+  IF Q > 1 AND Q < LEN(S$)
+    F$ = S$[1, Q - 1]
+    Drive$ = S$[Q + 1, LEN(S$) - Q]
+    RETURN 1
+  ENDIF
+  ' Version 1 compatibility: synthesize the formerly implicit target.
+  Q = 0
+  FOR Ch = 1 TO LEN(F$)
+    IF PEEK(ADR(F$) + Ch) = 58 OR PEEK(ADR(F$) + Ch) = 47 OR PEEK(ADR(F$) + Ch) = 92 OR PEEK(ADR(F$) + Ch) = 62 THEN Q = Ch
+  NEXT Ch
+  IF Q = 0 OR Q >= LEN(F$) THEN RETURN 0
+  IF IsSdx
+    Drive$ = "DO:"
+  ELSE
+    Drive$ = "O:"
+  ENDIF
+  Drive$ =+ F$[Q + 1, LEN(F$) - Q]
+  RETURN 1
+ENDFUNC
+
+FUNC CacheName$()
+  LOCAL Q, Ch
+  Q = 0
+  FOR Ch = 1 TO LEN(Drive$)
+    IF PEEK(ADR(Drive$) + Ch) = 58 OR PEEK(ADR(Drive$) + Ch) = 47 OR PEEK(ADR(Drive$) + Ch) = 92 OR PEEK(ADR(Drive$) + Ch) = 62 THEN Q = Ch
+  NEXT Ch
+  IF Q > 0 AND Q < LEN(Drive$) THEN RETURN Drive$[Q + 1, LEN(Drive$) - Q]
+  RETURN ""
+ENDFUNC
+
 FUNC GroupExt$(N)
   IF N = 0 THEN RETURN "COM"
   IF N = 1 THEN RETURN "ATA"
@@ -80,7 +124,8 @@ FUNC ExtensionGroup(E$)
 ENDFUNC
 
 FUNC DirectoryExtra(N)
-  ' Empty EOSFS already owns one main-directory data sector and its map.
+  ' Empty filesystems already own one main-directory data sector and map.
+  IF IsSdx THEN RETURN ((N + 1) * 23 + 255) / 256 - 1
   RETURN ((N + 1) * 44 + 255) / 256 - 1
 ENDFUNC
 
@@ -119,17 +164,23 @@ ENDFUNC
 
 FUNC AddDirectoryLine(Path$)
   LOCAL N
-  Ext$ = UCASE$(S$[11, 3])
+  IF IsSdx
+    IF LEN(S$) < 41 OR S$[36, 1] <> ":" THEN RETURN
+    Ext$ = UCASE$(S$[10, 3])
+  ELSE
+    Ext$ = UCASE$(S$[11, 3])
+  ENDIF
   IF ExtensionGroup(Ext$) < 0 OR Count > 95 THEN RETURN
   Name$ = ""
-  FOR J = 3 TO 10
+  IF IsSdx THEN P = 1 ELSE P = 3
+  FOR J = P TO P + 7
     C = PEEK(ADR(S$) + J)
     IF C <> 32 THEN Name$ =+ CHR$(C)
   NEXT J
-  Name$ =+ "." : Name$ =+ S$[11, 3]
+  Name$ =+ "." : Name$ =+ Ext$
   Spec$ = Path$ : Spec$ =+ Name$
   IF LEN(Spec$) > 47 OR FindSpec(Spec$) >= 0 THEN RETURN
-  N = VAL(S$[15, 3])
+  IF IsSdx THEN N = CountFileSectors(Spec$) ELSE N = VAL(S$[15, 3])
   IF N >= 999 THEN N = CountFileSectors(Spec$)
   MOVE ADR(Spec$), ADR(FileSpecs) + Count * 48, LEN(Spec$) + 1
   FileSectors(Count) = N
@@ -166,12 +217,15 @@ FUNC LoadManifest()
   OPEN #1, 4, 0, "D1:RAMCACHE.CFG"
   IF ERR() <> 1 THEN CLOSE #1 : RETURN
   INPUT #1, S$
-  IF ERR() <> 1 OR S$ <> "MUTINREX RAMCACHE 1" THEN CLOSE #1 : RETURN
+  Status = ERR()
+  IF Status <> 1 THEN CLOSE #1 : RETURN
+  IF S$ <> "MUTINREX RAMCACHE 1" AND S$ <> "MUTINREX RAMCACHE 2" THEN CLOSE #1 : RETURN
   DO
-    INPUT #1, Spec$
+    INPUT #1, S$
     Status = ERR()
     IF Status <> 1 THEN EXIT
-    K = FindSpec(Spec$)
+    Status = ParseCacheLine()
+    K = FindSpec(F$)
     IF K >= 0 THEN Selected(K) = 1
   LOOP
   CLOSE #1
@@ -179,11 +233,12 @@ ENDFUNC
 
 FUNC ParseDirectoryName()
   Name$ = ""
-  FOR J = 3 TO 10
+  IF IsSdx THEN P = 1 ELSE P = 3
+  FOR J = P TO P + 7
     C = PEEK(ADR(S$) + J)
     IF C <> 32 THEN Name$ =+ CHR$(C)
   NEXT J
-  T$ = S$[11, 3]
+  IF IsSdx THEN T$ = S$[10, 3] ELSE T$ = S$[11, 3]
   IF T$ <> "   "
     Name$ =+ "."
     FOR J = 1 TO 3
@@ -209,7 +264,13 @@ FUNC ReadRamCapacity()
       FreeSectors = VAL(S$)
       EXIT
     ENDIF
-    IF LEN(S$) >= 17 AND PEEK(ADR(S$) + 2) <> 58
+    IF IsSdx AND LEN(S$) >= 41 AND S$[36, 1] = ":"
+      ParseDirectoryName()
+      Spec$ = "DO:" : Spec$ =+ Name$
+      K = CountFileSectors(Spec$)
+      ExistingUsed = ExistingUsed + K + 1
+      INC ExistingCount
+    ELIF NOT IsSdx AND LEN(S$) >= 17 AND PEEK(ADR(S$) + 2) <> 58
       ParseDirectoryName()
       Spec$ = "DO:" : Spec$ =+ Name$
       K = VAL(S$[15, 3])
@@ -303,16 +364,16 @@ FUNC PickFiles()
   DO
     CLS
     PRINT "RAMDISK FILES "; Page * 9 + 1; "-"; Page * 9 + 9; " OF "; Count
-    PRINT "# SEL SOURCE                 SIZE"
+    PRINT "# LOAD SOURCE                SIZE"
     FOR J = 0 TO 8
       K = Page * 9 + J
       IF K < Count
         Spec$ = $(ADR(FileSpecs) + K * 48)
         PRINT J + 1; " ";
         IF Selected(K)
-          PRINT "[X] ";
+          PRINT "[R] ";
         ELIF CandidateFits(K)
-          PRINT "[ ] ";
+          PRINT "[D] ";
         ELSE
           PRINT "[!] ";
         ENDIF
@@ -374,24 +435,22 @@ FUNC WriteStartup()
     IF Code = 1
       INPUT #2, S$
       Code = ERR()
-      IF Code = 1 AND S$ = "MUTINREX RAMCACHE 1"
+      Status = 0
+      IF S$ = "MUTINREX RAMCACHE 1" THEN Status = 1
+      IF S$ = "MUTINREX RAMCACHE 2" THEN Status = 1
+      IF Code = 1 AND Status
         DO
           INPUT #2, S$
           Code = ERR()
           IF Code <> 1 THEN EXIT
-          P = 0
-          FOR K = 1 TO LEN(S$)
-            C = PEEK(ADR(S$) + K)
-            IF C = 58 OR C = 47 OR C = 92 OR C = 62 THEN P = K
-          NEXT K
-          IF P > 0 AND P < LEN(S$)
-            T$ = S$[P + 1, LEN(S$) - P]
-            PRINT #1; "ECHO COPYING "; S$; " -> RAMDISK:"; T$
-            PRINT #1; "cp "; S$; " O:"; T$
-            IF UCASE$(S$) = "D1:WFC.COM" THEN WfcRam = 1
-            IF UCASE$(S$) = "D1:REMMS.COM" THEN RemmsRam = 1
-            IF UCASE$(S$) = "D1:RS232.COM" THEN Rs232Ram = 1
-            IF UCASE$(S$) = "D1:APETIME.COM" THEN ApeRam = 1
+          IF ParseCacheLine()
+            T$ = CacheName$()
+            PRINT #1; "ECHO COPYING "; F$; " -> RAMDISK:"; T$
+            PRINT #1; "cp "; F$; " O:"; T$
+            IF UCASE$(F$) = "D1:WFC.COM" THEN WfcRam = 1
+            IF UCASE$(F$) = "D1:REMMS.COM" THEN RemmsRam = 1
+            IF UCASE$(F$) = "D1:RS232.COM" THEN Rs232Ram = 1
+            IF UCASE$(F$) = "D1:APETIME.COM" THEN ApeRam = 1
           ENDIF
         LOOP
       ENDIF
@@ -444,7 +503,96 @@ FUNC WriteStartup()
   RETURN Code
 ENDFUNC
 
+FUNC WriteSdxStartup()
+  WfcRam = 0 : RemmsRam = 0 : Rs232Ram = 0 : ApeRam = 0 : DriverRam = 0
+  CLOSE #1
+  IF RDriver = 0 AND AutoStart = 0
+    XIO 33, #1, 0, 0, "D1:AUTOEXEC.BAT"
+    RETURN 1
+  ENDIF
+  XIO 33, #1, 0, 0, "D1:AUTOEXEC.BAT"
+  CLOSE #1
+  OPEN #1, 8, 0, "D1:AUTOEXEC.BAT"
+  Code = ERR()
+  IF Code <> 1 THEN CLOSE #1 : RETURN Code
+  IF AutoStart AND StartOption(2)
+    CLOSE #2
+    OPEN #2, 4, 0, "D1:RAMCACHE.CFG"
+    Code = ERR()
+    IF Code = 1
+      INPUT #2, S$
+      Code = ERR()
+      Status = 0
+      IF S$ = "MUTINREX RAMCACHE 1" THEN Status = 1
+      IF S$ = "MUTINREX RAMCACHE 2" THEN Status = 1
+      IF Code = 1 AND Status
+        DO
+          INPUT #2, S$
+          Code = ERR()
+          IF Code <> 1 THEN EXIT
+          IF ParseCacheLine()
+            T$ = CacheName$()
+            PRINT #1; "ECHO COPYING "; F$; " -> RAMDISK:"; T$
+            PRINT #1; "COPY "; F$; " O:"; T$
+            IF UCASE$(F$) = "D1:WFC.COM" THEN WfcRam = 1
+            IF UCASE$(F$) = "D1:REMMS.COM" THEN RemmsRam = 1
+            IF UCASE$(F$) = "D1:RS232.COM" THEN Rs232Ram = 1
+            IF UCASE$(F$) = "D1:APETIME.COM" THEN ApeRam = 1
+            IF RDriver = 1 AND UCASE$(F$) = "D1:RS232.COM" THEN DriverRam = 1
+            IF RDriver = 2 AND UCASE$(F$) = "D1:RVRFULL.COM" THEN DriverRam = 1
+            IF RDriver = 3 AND UCASE$(F$) = "D1:RVRTWOW.COM" THEN DriverRam = 1
+            IF RDriver = 4 AND UCASE$(F$) = "D1:NHAND.COM" THEN DriverRam = 1
+          ENDIF
+        LOOP
+      ENDIF
+    ENDIF
+    CLOSE #2
+  ENDIF
+  T$ = ""
+  IF RDriver = 1 THEN T$ = "RS232.COM"
+  IF RDriver = 2 THEN T$ = "RVRFULL.COM"
+  IF RDriver = 3 THEN T$ = "RVRTWOW.COM"
+  IF RDriver = 4 THEN T$ = "NHAND.COM"
+  IF LEN(T$) > 0
+    IF DriverRam
+      PRINT #1; "O:"; T$
+    ELSE
+      PRINT #1; "D1:"; T$
+    ENDIF
+  ENDIF
+  IF RemmsRam
+    PRINT #1; "O:REMMS.COM"
+  ELSE
+    PRINT #1; "D1:REMMS.COM"
+  ENDIF
+  IF AutoStart
+    IF StartOption(1) = 2
+      IF ApeRam
+        PRINT #1; "O:APETIME.COM >>D1:APETIME.TXT"
+      ELSE
+        PRINT #1; "D1:APETIME.COM >>D1:APETIME.TXT"
+      ENDIF
+    ENDIF
+    PRINT #1; "SET DAYTIME=1"
+    IF StartOption(1) > 0
+      PRINT #1; "DATE /T >>D1:BBSDATE.TXT"
+      PRINT #1; "TIME /T >>D1:BBSTIME.TXT"
+    ENDIF
+    IF StartOption(0) THEN PRINT #1; "X ";
+    IF WfcRam
+      PRINT #1; "O:WFC.COM"
+    ELSE
+      PRINT #1; "D1:WFC.COM"
+    ENDIF
+  ENDIF
+  Code = ERR()
+  CLOSE #1
+  IF Code = 1 THEN Code = ERR()
+  RETURN Code
+ENDFUNC
+
 FUNC WriteBootFiles()
+  IF IsSdx THEN RETURN WriteSdxStartup()
   Status = WriteSystem()
   IF Status = 1 THEN Status = WriteStartup()
   RETURN Status
@@ -462,9 +610,15 @@ FUNC SaveManifest()
   OPEN #1, 8, 0, "D1:RAMCACHE.CFG"
   Status = ERR()
   IF Status = 1
-    PRINT #1; "MUTINREX RAMCACHE 1"
+    PRINT #1; "MUTINREX RAMCACHE 2"
     FOR K = 0 TO Count - 1
-      IF Selected(K) THEN PRINT #1; $(ADR(FileSpecs) + K * 48)
+      IF Selected(K)
+        F$ = $(ADR(FileSpecs) + K * 48)
+        Drive$ = ""
+        S$ = F$
+        Status = ParseCacheLine()
+        IF Status THEN PRINT #1; F$; "|"; Drive$
+      ENDIF
     NEXT K
     Status = ERR()
   ENDIF

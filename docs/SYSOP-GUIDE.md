@@ -166,7 +166,7 @@ sysop are forced to level 9.
 | 14 | Start the BBS | ON | The start-up batch starts the BBS, with the date and time of the EOS clock |
 | 15 | Start with X | OFF | Direct start fits because the BBS uses field-sized strings. Turn this on to switch the EOS cartridge off and give the message/file buffer 8 KB more room. |
 | 16 | Clock source | MANUAL | MANUAL asks at every BBS start; EOS/JIFFY trusts the current volatile clock; APETIME asks an APE-family SIO host; R-TIME 8 uses a persistent hardware/emulated RTC. |
-| 17 | RAM cache | OFF | Adds EOS's `O:` RAM disk, copies all five core modules, bundled doors and `.TXT`/`.ATA` screens there during startup, and runs the module chain from RAM. Use compatible PORTB/XE extended RAM; Altirra 1088K is the verified recommendation. Cold-restart after saving. Database and download files remain on their configured disk drives. |
+| 17 | RAM cache | OFF | Uses the platform RAM disk and copies the individually selected modules/assets during startup. EOS records `O:` targets; SDX records `DO:` CIO targets while its shell copies to `O:`. Altirra 1088K is verified. Cold-restart after saving. Database and download files remain on their configured disk drives. |
 
 A drive is written like `D1:` or `D2:`; a folder of the DOS can be given
 too, ending with `>` or `\`, for example `D1:>BBS>`.
@@ -270,6 +270,12 @@ messages, and downloads drives are not changed. In Altirra,
 select the 1088K memory configuration; this is verified to leave enough
 EOS-compatible banks for the complete cache. Some smaller expansion layouts
 are not recognized by EOS's RAM-disk driver.
+
+On the SDX image, RDCONF writes `AUTOEXEC.BAT` instead of the EOS files.
+SpartaDOS X installs its native RAM disk as shell drive `O:`; exBASIC/CIO uses
+the equivalent `DO:` path. `RAMCACHE.CFG` records that destination separately
+for every selected file, so the picker controls whether each module or asset
+loads from RAM (`[R]`) or its configured disk (`[D]`).
 
 For Altirra, add an **R-Time 8** device to the active machine's device tree,
 select R-TIME 8 in CONFIG item 16, save, and perform a cold reset. Merely

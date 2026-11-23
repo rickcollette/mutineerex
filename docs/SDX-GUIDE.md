@@ -23,9 +23,12 @@ Use `RVRTWOW.COM` or `NHAND.COM` in the first line for those interfaces. If
 the emulator or another SDX driver already provides R:, omit the first line.
 
 Run `CONFIG.COM` and `INIT.COM` before normal operation. CONFIG writes the
-shared `BBS.CFG`; its EOS startup files are not used by SDX. Put the selected
-three-command sequence in the SDX startup batch only after configuration and
-initialization are complete.
+shared `BBS.CFG`. RDCONF detects `SDX.ENV` and writes an SDX-native
+`AUTOEXEC.BAT`; it does not write EOS startup files. With RAM cache enabled,
+every selected `RAMCACHE.CFG` source has an explicit `DO:` runtime target.
+AUTOEXEC copies it to shell drive `O:`, displays the copy, and starts the
+selected `.COM` backend, REMMS, and WFC from their configured disk or RAM
+locations.
 
 Build both platform images without changing the current product version:
 

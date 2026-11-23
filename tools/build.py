@@ -225,14 +225,25 @@ EOS_SYSTEM_FILES = [
     ("eossys.sys", b"SET PATH=CAR:;D1:\x9bDEVICE JIFFY\x9b"),
     ("eosauto.bat", b"SET PATH=CAR:;D1:\x9b"),
 ]
-RAMCACHE_DEFAULT = (
-    "MUTINREX RAMCACHE 1\x9b"
-    "D1:wfc.com\x9bD1:mainbbs.com\x9bD1:message.com\x9b"
-    "D1:files.com\x9bD1:doors.com\x9bD1:bjack.com\x9bD1:slots.com\x9b" +
-    "".join("D1:%s.%s\x9b" % (name, extension)
-            for name in SCREENS for extension in ("TXT", "ATA"))
-).encode("latin-1")
-SHARED_CONFIG_FILES = [("RAMCACHE.CFG", RAMCACHE_DEFAULT)]
+EOS_PLATFORM_MARKER = ("EOS.ENV", b"MUTINREX EOS 1\x9b")
+SDX_PLATFORM_MARKER = ("SDX.ENV", b"MUTINREX SDX 1\x9b")
+def ramcache_default(target_prefix):
+    """Build explicit source-to-runtime cache mappings for one platform."""
+    sources = [
+        "D1:wfc.com", "D1:mainbbs.com", "D1:message.com",
+        "D1:files.com", "D1:doors.com", "D1:bjack.com", "D1:slots.com",
+    ]
+    sources += [
+        "D1:%s.%s" % (name, extension)
+        for name in SCREENS for extension in ("TXT", "ATA")
+    ]
+    lines = ["MUTINREX RAMCACHE 2"]
+    lines += [source + "|" + target_prefix + source.split(":", 1)[1]
+              for source in sources]
+    return ("\x9b".join(lines) + "\x9b").encode("latin-1")
+
+
+SHARED_CONFIG_FILES = []
 
 
 def path(rel):
@@ -278,6 +289,11 @@ def compile_program(src, out, modules):
         # compact-string binder, so the native-heavy image crosses MEMTOP and
         # exits to EOS with ERROR- 2.  Bytecode leaves startup headroom while
         # preserving the REMMS ABI and all WFC behavior.
+        cmd.append("-no-native")
+    if src == "src/rdconf.bas":
+        # RDCONF runs while the EOS cartridge is mapped and holds the full
+        # candidate table plus directory strings.  Bytecode leaves about
+        # 1.3 KB more runtime heap than the optimizer's mixed native image.
         cmd.append("-no-native")
     # Keep debugger symbols/listings for the two programs whose available
     # memory is constrained by the mapped EOS cartridge.  WFC's symbols are
@@ -448,6 +464,8 @@ def main():
     for filename in files:
         with open(filename, "rb") as f:
             contents[os.path.basename(filename)] = f.read()
+    contents["RAMCACHE.CFG"] = ramcache_default("O:")
+    contents[EOS_PLATFORM_MARKER[0]] = EOS_PLATFORM_MARKER[1]
 
     eos_atr = path(EOS_ATR_RELATIVE_PATH)
     print("> " + EOS_ATR_RELATIVE_PATH)
@@ -459,10 +477,13 @@ def main():
 
     sdx_contents = {}
     eos_only = {name for name, _ in EOS_SYSTEM_FILES}
+    eos_only.add(EOS_PLATFORM_MARKER[0])
     for name, data in contents.items():
         if name in eos_only:
             continue
         sdx_contents[SDX_DRIVER_RENAMES.get(name, name).upper()] = data
+    sdx_contents["RAMCACHE.CFG"] = ramcache_default("DO:")
+    sdx_contents[SDX_PLATFORM_MARKER[0]] = SDX_PLATFORM_MARKER[1]
     sdx_atr = path(SDX_ATR_RELATIVE_PATH)
     print("> " + SDX_ATR_RELATIVE_PATH)
     sdfs.build(sdx_atr, DISK_SECTORS, DISK_SECTOR_SIZE, sdx_contents,
@@ -470,6 +491,19 @@ def main():
     if os.path.getsize(sdx_atr) != ATR_SIZE:
         sys.exit("wrong SDX ATR size after template build")
     audit_packaged_branding(sdx_atr, False)
+
+    # A versioned build is a complete two-image release.  Remove older ATRs
+    # only after both current images have been built and audited successfully,
+    # so disk/ cannot misleadingly contain stale release candidates.
+    keep = {os.path.abspath(eos_atr), os.path.abspath(sdx_atr)}
+    for name in os.listdir(path("disk")):
+        if not re.fullmatch(r"mutinrex-(?:(?:eos|sdx)-)?v[0-9]+\.[0-9]+\.[0-9]+\.atr",
+                            name, re.IGNORECASE):
+            continue
+        candidate = os.path.abspath(path("disk/" + name))
+        if candidate not in keep:
+            os.remove(candidate)
+            print("  Removed stale " + os.path.relpath(candidate, ROOT))
 
 
 if __name__ == "__main__":

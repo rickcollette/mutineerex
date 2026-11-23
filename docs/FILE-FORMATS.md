@@ -31,7 +31,7 @@ Written by CONFIG and read by the BBS and CONFIG
 | 15 | Start the BBS from `eosauto.bat`, 1 or 0 | `1` |
 | 16 | Start it with X (cartridge off), 1 or 0 | `0` |
 | 17 | Clock: 0 = manual, 1 = current EOS/JIFFY, 2 = APETime, 3 = R-Time 8 | `0` |
-| 18 | RAM cache: 1 = load modules and screens from EOS RAM disk `O:`, 0 = use configured disk drives | `0` |
+| 18 | RAM cache: 1 = load selected files from their explicit EOS/SDX RAM-disk targets, 0 = use configured disk drives | `0` |
 
 ## eosauto.bat (D1:)
 
@@ -40,12 +40,19 @@ Sysop Guide, *Start-up with EOS*).
 
 ## RAMCACHE.CFG (always D1:)
 
-Written by RDCONF. The first line is `MUTINREX RAMCACHE 1`; each following
-line is one exact source path selected for the volatile O: cache, for example
-`D1:mainbbs.com` or `D1:WELC.ATA`. Selection is authoritative: the BBS uses O:
-for a listed file and does not probe or fall back to its disk copy. RDCONF
-accounts for EOSFS data sectors, each file's extent-map sector, and directory
-growth before it allows the manifest and startup files to be saved.
+Written by RDCONF. The current first line is `MUTINREX RAMCACHE 2`; every
+following line maps one exact disk source to its runtime RAM path:
+
+```text
+D1:mainbbs.com|O:mainbbs.com
+D1:mainbbs.com|DO:mainbbs.com
+```
+
+RDCONF writes the first form on EOS and the second on SpartaDOS X, where
+exBASIC reaches drive O through the D: CIO handler. Version-1 source-only
+manifests remain readable and are upgraded on save. A listed file never
+probes or falls back to its disk source. RDCONF accounts for file and
+directory overhead before allowing the manifest and startup files to be saved.
 
 ## DOORS.DAT (data drive)
 
@@ -56,7 +63,8 @@ KEY|LEVEL|DISPLAY NAME|PATH
 ```
 
 `KEY` is one character, `LEVEL` is the minimum caller access level 1–9,
-and `PATH` is a full EOS path or a filename searched on O: then D1:. Example:
+and `PATH` is a full configured path or a filename resolved through the cache
+manifest and then D1:. Example:
 The bundled catalog contains `B|1|Blackjack Casino|bjack.com` and
 `S|1|Lucky Slots|slots.com`.
 Malformed records are ignored.

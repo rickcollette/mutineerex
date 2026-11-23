@@ -89,7 +89,10 @@ def main() -> int:
             if "RAMDISK FILE PLANNER" in screen_text and "CHOICE >" in screen_text:
                 break
             if "ERROR-" in screen_text or "Illegal instruction hit" in proc.debugger_text():
-                raise RuntimeError("RDCONF stopped before its planner")
+                detail = " | ".join(
+                    line.strip() for line in screen_text.splitlines() if line.strip()
+                )
+                raise RuntimeError("RDCONF stopped before its planner: " + detail)
             proc.debugger_command("g")
             time.sleep(0.75)
         else:

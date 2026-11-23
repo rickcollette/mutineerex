@@ -39,6 +39,7 @@ TRANSPORT = "fujinet"
 DRIVER_NAME = "NHAND"
 DRIVER_NUMBER = 4
 USE_RAMDISK = False
+CALL_READY_TIMEOUT = 240.0
 PROGRAMS = ("wfc", "mainbbs", "message", "files", "doors", "bjack", "slots")
 CORE = PROGRAMS[:5]
 SCREENS = ("WFC", "WELC", "BULL", "FUNC", "HELP", "MESGM", "FILEM", "NEWU")
@@ -84,6 +85,25 @@ def connect(timeout: float = 180.0) -> socket.socket:
             last_error = exc
             time.sleep(0.5)
     raise TimeoutError(f"port {PORT} did not accept a connection: {last_error}")
+
+
+def wait_for_log(path: Path, marker: bytes, process: subprocess.Popen,
+                 timeout: float, restart=None) -> subprocess.Popen:
+    """Wait until FujiNet and the Atari have completed a specific handshake."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            if restart is None:
+                raise RuntimeError("FujiNet exited during startup")
+            time.sleep(0.5)
+            process = restart()
+        try:
+            if marker in path.read_bytes():
+                return process
+        except OSError:
+            pass
+        time.sleep(0.1)
+    raise TimeoutError(f"FujiNet log did not contain {marker!r}")
 
 
 def write_fujinet_config(path: Path) -> None:
@@ -176,9 +196,23 @@ def make_case(target: Path) -> None:
         startup.extend(("D1:remms.com", "DO:wfc.com" if USE_RAMDISK else "D1:wfc.com"))
         files["eosauto.bat"] = atascii_lines(*startup)
     else:
-        files["AUTOEXEC.BAT"] = atascii_lines(
-            f"D1:{DRIVER_NAME}.COM", "D1:REMMS.COM", "D1:WFC.COM"
-        )
+        startup = []
+        if USE_RAMDISK:
+            startup.extend(
+                f"COPY D1:{name}.COM O:{name}.COM" for name in PROGRAMS
+            )
+            startup.extend(
+                f"COPY D1:{name}.{extension} O:{name}.{extension}"
+                for name in SCREENS for extension in ("TXT", "ATA")
+            )
+            # A successful caller journey cannot use a hidden D1 fallback.
+            startup.extend(f"RENAME D1:{name}.COM {name}.BAK" for name in CORE)
+        startup.extend((
+            f"D1:{DRIVER_NAME}.COM",
+            "D1:REMMS.COM",
+            "O:WFC.COM" if USE_RAMDISK else "D1:WFC.COM",
+        ))
+        files["AUTOEXEC.BAT"] = atascii_lines(*startup)
     sdfs.build(str(target), 65535, 256, files,
                volname="MUTINREX", eosfs=IMAGE_PLATFORM == "eos")
 
@@ -258,6 +292,16 @@ def main() -> int:
                 )
 
             fujinet_proc = start_fujinet()
+            # Connecting on NHAND's first network STATUS can queue RING while
+            # REMMS is still clearing its startup state.  Wait for the first
+            # confirmed idle listener poll, then introduce the caller.
+            fujinet_proc = wait_for_log(
+                fujinet_log_path,
+                b"sio_status_channel() - BW: 0 C: 0",
+                fujinet_proc,
+                240.0,
+                restart=start_fujinet,
+            )
             deadline = time.monotonic() + 240.0
             last_error: OSError | None = None
             while True:
@@ -275,7 +319,7 @@ def main() -> int:
                 time.sleep(0.5)
         else:
             sock = connect(timeout=240.0)
-        ready_deadline = time.monotonic() + 240.0
+        ready_deadline = time.monotonic() + CALL_READY_TIMEOUT
         while True:
             candidate = Wire(sock)
             try:
@@ -346,6 +390,23 @@ def main() -> int:
                         address = hatabs[offset + 1] | hatabs[offset + 2] << 8
                         devices.append(f"{chr(hatabs[offset])}:${address:04X}")
                 failures.append("HATABS at failure: " + ", ".join(devices))
+                anchors = read_memory(proc, 0x03EC, 8)
+                public = anchors[2] | anchors[3] << 8
+                session = anchors[6] | anchors[7] << 8
+                public_state = read_memory(proc, public, 12)
+                session_state = read_memory(proc, session, 161)
+                failures.append(
+                    "REMMS at failure: "
+                    f"public={public_state.hex(' ')}; "
+                    f"online={session_state[87]} "
+                    f"physical={session_state[139]} "
+                    f"connection={session_state[140]} "
+                    f"event={session_state[141]}/{session_state[142]} "
+                    f"cio={session_state[143]} "
+                    f"wfc={session_state[154]} "
+                    f"profile={session_state[157]} "
+                    f"rings={session_state[160]}/{session_state[159]}"
+                )
             except Exception as debug_exc:
                 failures.append(f"could not read failure console: {debug_exc}")
     finally:

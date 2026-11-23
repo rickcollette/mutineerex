@@ -53,9 +53,9 @@ UserFile$ = DataDrive$ : UserFile$ =+ "USERS.DAT"
 SystemFile$ = DataDrive$ : SystemFile$ =+ "SYSTEM.MET"
 ActiveBase = -2
 
-' CONFIG formats EOS's O: drive and copies only the
-' sources selected in D1:RAMCACHE.CFG.  ramcache.bas resolves every access
-' against that manifest; selection is authoritative and never a probe/fallback.
+' RDCONF copies only the sources selected in D1:RAMCACHE.CFG. The manifest
+' records an explicit O: (EOS) or DO: (SDX CIO) runtime target for each file;
+' selection is authoritative and never a probe/fallback.
 FileName$ = ""
 
 ' Allocate only the large work areas used by this independently loaded

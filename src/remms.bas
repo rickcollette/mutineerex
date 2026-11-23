@@ -182,7 +182,7 @@ FUNC RemmsApplyRoute()
 ENDFUNC
 
 FUNC RunModule(Path$, App, Module$)
-  LOCAL K
+  LOCAL K, CachePrefix
   LOCAL Source$
   NextApp = App
   RemmsSaveSession()
@@ -200,9 +200,14 @@ FUNC RunModule(Path$, App, Module$)
   PUT #ModemCh, 124
   PRINT #ModemCh,
   Source$ = Path$
-  IF LEN(Path$) > 2 AND UCASE$(Path$[1, 2]) = "O:"
+  CachePrefix = 0
+  IF LEN(Path$) > 2
+    IF UCASE$(Path$[1, 2]) = "O:" THEN CachePrefix = 2
+    IF UCASE$(Path$[1, 3]) = "DO:" THEN CachePrefix = 3
+  ENDIF
+  IF CachePrefix > 0
     Source$ = "RAMDISK:"
-    IF LEN(Path$) > 2 THEN Source$ =+ Path$[3, LEN(Path$) - 2]
+    IF LEN(Path$) > CachePrefix THEN Source$ =+ Path$[CachePrefix + 1, LEN(Path$) - CachePrefix]
   ENDIF
   PRINT #ModemCh; "Loading "; Module$; " from "; Source$; "..."
   ' Leave the real load message visible while RUN blocks in filesystem I/O.

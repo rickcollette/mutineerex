@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Build, validate, tag, push, and publish a Mutineer-eX GitHub release.
+"""Version, build, validate, commit, tag, push, and publish a GitHub release.
 
-Typical use, after committing the release changes on the branch to publish:
+Typical use from a clean branch containing the changes to publish:
 
     python tools/release.py
 
-The version comes from VERSION and produces tag v<VERSION>.  The script
-refuses a dirty tree, non-fast-forward push, conflicting tag, or existing
-GitHub release.  Use --dry-run to build/package locally and print the GitHub
-mutations without performing them.
+The default increments VERSION's patch component, synchronizes source banners,
+runs both platform suites, creates a release commit and v<VERSION> tag, pushes
+the branch and tag atomically, and uploads both ATRs plus SHA256SUMS.txt.  Use
+--bump none to publish the already-declared VERSION.  Use --dry-run to perform
+the build/package validation and print mutations while restoring source files.
 """
 from __future__ import annotations
 
@@ -68,6 +69,25 @@ def read_version() -> str:
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?", version):
         raise ReleaseError("VERSION is not a supported semantic version: %r" % version)
     return version
+
+
+def next_version(version: str, part: str) -> str:
+    if part == "none":
+        return version
+    major, minor, patch = (int(value) for value in version.split("."))
+    if part == "major":
+        return "%d.0.0" % (major + 1)
+    if part == "minor":
+        return "%d.%d.0" % (major, minor + 1)
+    return "%d.%d.%d" % (major, minor, patch + 1)
+
+
+def versioned_source_files() -> tuple[Path, ...]:
+    return (
+        VERSION_FILE,
+        *sorted((ROOT / "src").glob("*.bas")),
+        *sorted((ROOT / "text").glob("*.txt")),
+    )
 
 
 def github_repo(remote_url: str) -> str:
@@ -179,11 +199,17 @@ def preflight(remote: str, version: str) -> tuple[str, str, str, bool]:
     return branch, head, repo, local_tag is not None
 
 
-def build_and_test(version: str, skip_runtime_tests: bool) -> tuple[Path, Path]:
-    command = [sys.executable, "tools/build_all.py", "--bump", "none"]
+def build_and_test(version: str, bump: str,
+                   skip_runtime_tests: bool) -> tuple[Path, Path]:
+    command = [sys.executable, "tools/build_all.py", "--bump", bump]
     if skip_runtime_tests:
         command.append("--skip-runtime-tests")
     run(command)
+    actual = read_version()
+    if actual != version:
+        raise ReleaseError(
+            "build declared version %s, expected %s" % (actual, version)
+        )
     atrs = tuple(
         ROOT / "disk" / ("%s-%s-v%s.atr" % (PRODUCT_ID, platform, version))
         for platform in ("eos", "sdx")
@@ -213,6 +239,45 @@ def package(version: str, atrs: tuple[Path, Path]) -> tuple[Path, ...]:
         print("  " + str(release_atr.relative_to(ROOT)))
     print("  " + str(checksum.relative_to(ROOT)))
     return *release_atrs, checksum
+
+
+def prepare_release_commit(version: str, dry_run: bool) -> str:
+    """Commit only the version/banner changes produced by build_all."""
+    # Preserve porcelain's leading index/worktree columns.  output() strips
+    # surrounding whitespace and would turn " M VERSION" into "M VERSION".
+    status = run(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        capture=True,
+    ).stdout.rstrip("\r\n")
+    unexpected = []
+    for line in status.splitlines():
+        name = line[3:].replace("\\", "/")
+        if name != "VERSION" and not name.startswith(("src/", "text/")):
+            unexpected.append(line)
+    if unexpected:
+        raise ReleaseError(
+            "build changed unexpected repository files:\n" +
+            "\n".join(unexpected)
+        )
+
+    commit_message = "Release " + version
+    add_command = ["git", "add", "--", "VERSION", "src", "text"]
+    commit_command = ["git", "commit", "--message", commit_message]
+    if dry_run:
+        if status:
+            print("+ " + display_command(add_command))
+            print("+ " + display_command(commit_command))
+        return output(["git", "rev-parse", "HEAD"])
+
+    if status:
+        run(add_command)
+        staged = run(["git", "diff", "--cached", "--quiet"], check=False)
+        if staged.returncode == 1:
+            run(commit_command)
+        elif staged.returncode != 0:
+            raise ReleaseError("could not inspect staged release changes")
+    ensure_clean_tree()
+    return output(["git", "rev-parse", "HEAD"])
 
 
 def publish(args: argparse.Namespace, version: str, branch: str,
@@ -270,6 +335,12 @@ def publish(args: argparse.Namespace, version: str, branch: str,
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--bump",
+        choices=("major", "minor", "patch", "none"),
+        default="patch",
+        help="version component to increment (default: patch)",
+    )
     parser.add_argument("--remote", default="origin",
                         help="git remote to push (default: origin)")
     parser.add_argument("--notes-file", type=Path,
@@ -290,16 +361,35 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    snapshot: dict[Path, bytes] = {}
+    release_commit_prepared = False
     try:
-        version = read_version()
+        current_version = read_version()
+        version = next_version(current_version, args.bump)
         branch, head, repo, local_tag_exists = preflight(args.remote, version)
-        atrs = build_and_test(version, args.skip_runtime_tests)
+        snapshot = {path: path.read_bytes() for path in versioned_source_files()}
+        atrs = build_and_test(version, args.bump, args.skip_runtime_tests)
         assets = package(version, atrs)
-        publish(args, version, branch, head, repo, local_tag_exists, assets)
+        release_head = prepare_release_commit(version, args.dry_run)
+        if not args.dry_run:
+            release_commit_prepared = True
+        publish(
+            args, version, branch, release_head, repo, local_tag_exists, assets
+        )
         return 0
     except (OSError, ReleaseError) as exc:
         print("release: " + str(exc), file=sys.stderr)
         return 1
+    finally:
+        if snapshot and (args.dry_run or not release_commit_prepared):
+            # Preflight guarantees these files and the index started clean.
+            # Restore a dry run or a pre-commit failure to that exact state.
+            subprocess.run(
+                ["git", "restore", "--staged", "--", "VERSION", "src", "text"],
+                cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            for path, contents in snapshot.items():
+                path.write_bytes(contents)
 
 
 if __name__ == "__main__":
