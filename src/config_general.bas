@@ -162,9 +162,9 @@ FUNC WriteSystem()
     PRINT #1; "DEVICE JIFFY"
   ENDIF
   IF StartOption(2) THEN PRINT #1; "DEVICE RAMDISK"
-  IF RDriver = 2 THEN PRINT #1; "DEVICE D1:rvrfull"
-  IF RDriver = 3 THEN PRINT #1; "DEVICE D1:rvrtwow"
-  IF RDriver = 4 THEN PRINT #1; "DEVICE D1:nhand"
+  IF RDriver = 2 THEN PRINT #1; "DEVICE D1:RVRFULL"
+  IF RDriver = 3 THEN PRINT #1; "DEVICE D1:RVRTWOW"
+  IF RDriver = 4 THEN PRINT #1; "DEVICE D1:NHAND"
   Code = ERR()
   CLOSE #1
   IF Code = 1 THEN Code = ERR()

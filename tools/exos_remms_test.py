@@ -52,7 +52,7 @@ def run_case(driver: str, work: Path, index: int) -> list[str]:
     if driver == "RS232":
         startup = "rs232 /R\x9b" + startup
     else:
-        system += f"DEVICE D1:{driver.lower()}\x9b"
+        system += f"DEVICE D1:{driver}\x9b"
     system = system.encode("latin-1")
     sdfs.overwrite(str(atr), "eossys.sys", system)
     sdfs.overwrite(str(atr), "eosauto.bat", startup.encode("latin-1"))

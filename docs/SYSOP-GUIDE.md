@@ -57,22 +57,22 @@ The build uses the filesystem writer synchronized from exOS v0.4. The files:
 
 | File | What it is |
 |------|------------|
-| `REMMS.COM` | Full REMMS 1.10 resident modem routing and session-9 handoff |
+| `remms.com` | Full REMMS 1.10 resident modem routing and session-9 handoff |
 | `RVRFULL.sys` | EOS device for a full-handshake R-Verter (`$1F` capabilities) |
 | `RVRTWOW.sys` | EOS device for a two-wire R-Verter (`$19` capabilities) |
 | `NHAND.sys` | EOS device mapping REMMS R: operations to a FujiNet N: TCP listener |
 | `TDAPE.COM` | Transient direct APETime helper from the matched REMMS source |
-| `WFC.COM` | Wait for call plus login and registration; starts the module chain |
-| `MAINBBS.COM` | Main command loop |
-| `MESSAGE.COM` | Message bases |
-| `FILES.COM` | File bases and transfers |
-| `DOORS.COM` | Access-filtered door catalog and launcher |
-| `BJACK.COM` | Blackjack game door with a session bankroll |
-| `SLOTS.COM` | Lucky Slots three-reel game door |
-| `CONFIG.COM` | General, message-base, file-area and user administration (`CONFIG`) |
-| `INIT.COM` | One-time creation of a new board (`INIT`) |
+| `wfc.com` | Wait for call plus login and registration; starts the module chain |
+| `mainbbs.com` | Main command loop |
+| `message.com` | Message bases |
+| `files.com` | File bases and transfers |
+| `doors.com` | Access-filtered door catalog and launcher |
+| `bjack.com` | Blackjack game door with a session bankroll |
+| `slots.com` | Lucky Slots three-reel game door |
+| `config.com` | General, message-base, file-area and user administration (`CONFIG`) |
+| `init.com` | One-time creation of a new board (`INIT`) |
 | `RS232.COM` | Legacy Atari 850 bootstrap retained separately from the EOS-native REMMS drivers |
-| `APETIME.COM` | Gets PC date/time from an APE, AspeQt or RespeQt SIO host; CONFIG checks whether it succeeded |
+| `apetime.com` | Gets PC date/time from an APE, AspeQt or RespeQt SIO host; CONFIG checks whether it succeeded |
 | `eossys.sys` | Loads the selected R-Verter/NHAND backend, clock, and optional RAM disk through exOS `DEVICE` lines |
 | `eosauto.bat` | Lowercase exOS startup file; the pristine image adds D1: to `PATH`, and INIT/CONFIG replace it with the BBS startup |
 | `WELC.TXT` / `WELC.ATA` | ASCII/ATASCII welcome screens |
@@ -101,7 +101,7 @@ Do these steps once, in this order.
 
 ### Step 1: INIT
 
-Type `D1:/INIT.COM` at the exOS prompt and confirm the destructive warning. INIT is
+Type `D1:/init.com` at the exOS prompt and confirm the destructive warning. INIT is
 only for a new board. It writes the default `D1:BBS.CFG` and
 `D1:eosauto.bat`, creates message base A as **GENERAL** at access level 1,
 allocates 100 sectors for that base, creates a 100-sector `USERS.DAT`, and
@@ -112,7 +112,7 @@ the default D1: drives. Routine administration never requires INIT.
 
 ### Step 2: CONFIG
 
-Type `D1:/CONFIG.COM`. Its main menu has four managers:
+Type `D1:/config.com`. Its main menu has four managers:
 
 1. **General Config** — the basic BBS, modem, drive and startup settings.
 2. **Message Bases** — list, add, edit, clear or remove any A–Z base. Editing
@@ -131,7 +131,7 @@ both lowercase startup files. Cold-restart after changing item 13.
 
 ### Step 3: the sysop account
 
-Type `D1:/REMMS.COM` then `D1:/WFC.COM` (or restart the computer to let exOS start them), and when the waiting screen
+Type `D1:/remms.com` then `D1:/wfc.com` (or restart the computer to let exOS start them), and when the waiting screen
 appears press **SELECT**: this logs you on at the keyboard (local mode).
 Press RETURN, enter the sysop account name you set in CONFIG, answer Y to
 register, and choose a 4 character password. Do this before allowing public
@@ -240,9 +240,9 @@ startup batch holds:
 ```
 ; Written by Mutineer-eX CONFIG
 SET PATH=CAR:;D1:
-D1:REMMS.COM
+D1:remms.com
 SET DAYTIME=1
-D1:WFC.COM
+D1:wfc.com
 ```
 
 1. exOS loads `RVRFULL.sys`, `RVRTWOW.sys`, or `NHAND.sys` while processing
@@ -250,18 +250,18 @@ D1:WFC.COM
    `.sys`, which is why the packaged extensions are lowercase.
 2. The default MANUAL mode writes no clock snapshot, so the BBS asks for
    `mm/dd/yyyy` and `hh:mm:ss`. Other modes add `DATE /T` and `TIME /T`.
-   APETIME first runs `D1:APETIME.COM`; if its SIO host does not answer,
+   APETIME first runs `D1:apetime.com`; if its SIO host does not answer,
    the BBS falls back to the manual questions. R-TIME 8 requires the device
    to be present when EOS cold-starts.
-3. `D1:REMMS.COM` installs the resident modem/session layer; `D1:WFC.COM`
+3. `D1:remms.com` installs the resident modem/session layer; `D1:wfc.com`
    starts the BBS module chain. With setting 15 on, the WFC line
    is prefixed with `X`.
 
-With RAM cache on, the batch uses exOS's `cp` command to copy `WFC.COM`,
-`MAINBBS.COM`, `MESSAGE.COM`, `FILES.COM`, `DOORS.COM`, `BJACK.COM`,
-`SLOTS.COM`, and the eight paired `.TXT`/`.ATA` screens to `O:`, sets the
+With RAM cache on, the batch uses exOS's `cp` command to copy `wfc.com`,
+`mainbbs.com`, `message.com`, `files.com`, `doors.com`, `bjack.com`,
+`slots.com`, and the eight paired `.TXT`/`.ATA` screens to `O:`, sets the
 command search path to `CAR:;O:;D1:`, and
-starts `WFC.COM`. EOS therefore starts the RAM copy when it is present and
+starts `wfc.com`. EOS therefore starts the RAM copy when it is present and
 falls back to D1: if the RAM disk could not be installed. Each module also
 verifies that the complete five-program core set is present before using the
 cache, so an incomplete copy falls back to D1: for later module loading. The
@@ -289,8 +289,8 @@ After the selected device has loaded during a cold start, type these commands
 at the EOS prompt:
 
 ```
-D1:REMMS.COM
-D1:WFC.COM
+D1:remms.com
+D1:wfc.com
 ```
 
 Do not start two R: backends in one boot. If the R: handler is already
@@ -485,7 +485,7 @@ record automatically.
 | `CAN'T READ D1:SYSTEM.MET, ERROR 170` at the start | Run CONFIG and choose I, or check setting 9 (users/callers drive) |
 | `NO D1:BBS.CFG, USING DEFAULTS` | Run CONFIG and save |
 | WFC says `OFFLINE / LOCAL LOGON ONLY` | No R: handler is installed. SELECT starts a local keyboard session; for remote calls select RVRFULL, RVRTWOW or NHAND and cold-restart, or preload an emulator R: and select NONE. |
-| exOS reports `File D1:NAME.sys 170` | Native EOSFS names are case-sensitive and DEVICE appends lowercase `.sys`. Rebuild/copy the packaged `RVRFULL.sys`, `RVRTWOW.sys` or `NHAND.sys`, preserving that case |
+| exOS reports `File D1:NAME.sys 170` | Native EOSFS names are case-sensitive and DEVICE appends lowercase `.sys`. Use the packaged `RVRFULL.sys`, `RVRTWOW.sys` or `NHAND.sys` name exactly |
 | The modem answers but WFC remains at `RING 1` | Use the current `REMMS.COM` and `WFC.COM`. REMMS requires modem result codes; keep `Q0 V1` in CONFIG item 6 so the modem reports `CONNECT` in text form |
 | `ERROR- 2` immediately when loading CONFIG | The disk has an older CONFIG.COM that used a 16 KB rewrite buffer; rebuild with `python tools/build.py` and copy the new program |
 | `ERROR- 2` immediately when loading a BBS module | A custom build omitted `src/fixed_strings.asm` or was linked below REMMS; rebuild with `python tools/build.py` and copy all five core modules |

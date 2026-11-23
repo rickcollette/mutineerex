@@ -30,10 +30,12 @@ exbasic -t:atari -I:src -I:lib -S:16384 -no-native -g -o build/WFC.XEX src/wfc.b
 
 `build.py` finds the compiler in the default Studio installation folder and
 uses `tools/mads.exe` for REMMS. Set `EXBASIC` or `MADS` to use other copies.
-The 16 MB ATR is built from scratch as native EOSFS v2 revision `$47` by
-the filesystem implementation synchronized from exOS v0.4. `build.py`
-checks the resulting size, and `python tools/sdfs.py check disk/mutinrex-v1.0.0.atr`
-checks its directory, extent maps, bitmap and free-sector count.
+The 16 MB ATR is built from scratch as native EOSFS v2 revision `$47`. Its
+boot sectors, 63-entry extent-map header, allocation hint, optimizer and skew
+fields match an image made by exOS 0.4's `FORMAT /QQ`. `build.py` checks those
+formatter invariants and the resulting size; `python tools/sdfs.py check
+disk/mutinrex-v1.0.0.atr` checks its directory, extent maps, bitmap and
+free-sector count.
 
 The REMMS acceptance test defaults to the full source tree at
 `D:\ATARI\atari-mutineer` (override with `MUTINEER_ROOT`) and uses only
@@ -185,7 +187,7 @@ compact field. Keep each buffer size and every assignment limit in sync.
 
 `main.bas` allocates `Buf` after the compact strings and fixed arrays and
 leaves 1500 bytes for function-local/compiler temporary strings. A normal
-EOS launch fits with the cartridge mapped. `X D1:WFC.COM` remains an
+EOS launch fits with the cartridge mapped. `X D1:wfc.com` remains an
 optional way to add 8 KB to `Buf` for a larger message index or file
 chunk. If a new local or hidden string causes `ERROR- 2`, increase the
 reserve (and accept a smaller `Buf`).

@@ -10,9 +10,16 @@ from PIL import Image
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EMU = os.path.join(
-    r"C:\Program Files\exBASIC Studio Contributors\exBASIC Studio",
-    "tools", "atari800-studio.exe")
+_EMU_CANDIDATES = (
+    os.path.join(r"C:\Program Files\exBASIC Studio Contributors\exBASIC Studio",
+                 "tools", "atari800-studio.exe"),
+    os.path.expandvars(
+        r"%LOCALAPPDATA%\Programs\exBASIC Studio\tools\atari800-studio.exe"),
+    os.path.expandvars(
+        r"%LOCALAPPDATA%\Programs\exBASIC Studio personal-rick\tools\atari800-studio.exe"),
+)
+EMU = next((candidate for candidate in _EMU_CANDIDATES
+            if os.path.isfile(candidate)), _EMU_CANDIDATES[0])
 
 
 class Emulator:

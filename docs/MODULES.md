@@ -25,8 +25,8 @@ exOS starts the board in this order:
 
 ```
 DEVICE D1:RVRFULL  ; in eossys.sys; or RVRTWOW/NHAND/none
-D1:REMMS.COM
-D1:WFC.COM
+D1:remms.com
+D1:wfc.com
 ```
 
 CONFIG setting 17 can add EOS's `O:` RAM disk. At cold startup,

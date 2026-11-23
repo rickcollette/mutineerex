@@ -31,8 +31,8 @@ D1:eossys.sys
 
 D1:eosauto.bat
   SET PATH=CAR:;D1:
-  D1:REMMS.COM
-  D1:WFC.COM
+  D1:remms.com
+  D1:wfc.com
 ```
 
 `REMMS.COM` publishes REMMS 1.10 and session contract 9. `WFC.COM` then:

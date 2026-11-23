@@ -20,8 +20,9 @@ Usage:  python tools/build.py [--no-disk]
   build/INIT.XEX           one-time board initialization
   disk/mutinrex-v<VERSION>.atr  exOS 0.4 work disk (native EOSFS v2 format)
 
-The programs are named .COM on the disk. EOS loads exactly one R: backend
-from eossys.sys with DEVICE, then eosauto.bat starts REMMS.COM and WFC.COM.
+The programs use lowercase .com names on the case-sensitive EOSFS disk. EOS
+loads exactly one R: backend from eossys.sys with DEVICE, then eosauto.bat
+starts remms.com and wfc.com.
 exBASIC RUN chains the remaining modules.
 
 Every screen has an ASCII text/*.txt file and a native ATASCII
@@ -34,11 +35,17 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TOOLS = r"C:\Program Files\exBASIC Studio Contributors\exBASIC Studio\tools"
+_TOOL_ROOTS = (
+    r"C:\Program Files\exBASIC Studio Contributors\exBASIC Studio\tools",
+    os.path.expandvars(r"%LOCALAPPDATA%\Programs\exBASIC Studio\tools"),
+    os.path.expandvars(r"%LOCALAPPDATA%\Programs\exBASIC Studio personal-rick\tools"),
+)
+TOOLS = next((candidate for candidate in _TOOL_ROOTS
+              if os.path.isdir(candidate)), _TOOL_ROOTS[0])
 EXBASIC = os.environ.get("EXBASIC", os.path.join(TOOLS, "exbasic", "exbasic.exe"))
 # exOS 0.4 uses native EOSFS v2 ($47) with extent maps and 44-byte directory
-# entries. Keep the former 16 MiB capacity while building the filesystem from
-# scratch with exOS's own writer.
+# entries. Keep the former 16 MiB capacity while reproducing the metadata and
+# boot sectors emitted by exOS FORMAT.
 DISK_SECTORS = 65535
 DISK_SECTOR_SIZE = 256
 ATR_SIZE = 16_776_592
@@ -90,12 +97,26 @@ def audit_branding():
 
 
 def audit_packaged_branding(atr):
-    """Reject retired branding in filenames or bytes shipped in the ATR."""
+    """Reject malformed EOSFS metadata and retired packaged branding."""
     volume = sdfs.Volume(atr)
     entries = volume.check()
     if volume.errors:
         sys.exit("invalid release ATR: " + "; ".join(volume.errors))
     failures = []
+    expected_mapents = (volume.seclen - 4) // 4
+    if volume.header_mapents != expected_mapents:
+        failures.append("EOSFS header has %d extent slots, expected %d" %
+                        (volume.header_mapents, expected_mapents))
+    boot = (volume.img.sector(1) + volume.img.sector(2) +
+            volume.img.sector(3))
+    expected_boot = sdfs.EOSFS_BOOTCODE
+    if (boot[6:9] != expected_boot[6:9] or
+            boot[44:] != expected_boot[44:]):
+        failures.append("EOSFS boot sectors do not match EOS FORMAT")
+    alloc_hint = volume.boot[18] | volume.boot[19] << 8
+    if alloc_hint and alloc_hint in volume.bitmap_used():
+        failures.append("EOSFS allocation hint points at used sector %d" %
+                        alloc_hint)
     for filename, entry in entries:
         candidate = filename.encode("latin-1") + b"\0" + entry.get("data", b"")
         lowered = candidate.lower()
@@ -103,7 +124,7 @@ def audit_packaged_branding(atr):
             if retired.lower().encode("ascii") in lowered:
                 failures.append("%s contains %s" % (filename, retired))
     if failures:
-        sys.exit("retired branding was packaged:\n  " + "\n  ".join(failures))
+        sys.exit("invalid release ATR:\n  " + "\n  ".join(failures))
 
 # An 8 KB bank of EOS.car is mapped at $A000-$BFFF.  In GRAPHICS 0 the
 # last byte below the screen is therefore about $9C1F.  CONFIG must leave
@@ -141,9 +162,9 @@ DRIVER_FILES = [
     ("drivers/RS232.COM", "rs232.com"),
     # exOS DEVICE appends lowercase `.sys`; native EOSFS names are case
     # sensitive, so the on-disk extensions must match exactly.
-    ("build/RVRFULL.SYS", "rvrfull.sys"),
-    ("build/RVRTWOW.SYS", "rvrtwow.sys"),
-    ("build/NHAND.SYS", "nhand.sys"),
+    ("build/RVRFULL.SYS", "RVRFULL.sys"),
+    ("build/RVRTWOW.SYS", "RVRTWOW.sys"),
+    ("build/NHAND.SYS", "NHAND.sys"),
     ("build/REMMS.COM", "remms.com"),
     ("build/TDAPE.COM", "tdape.com"),
 ]

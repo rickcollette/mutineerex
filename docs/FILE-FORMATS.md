@@ -48,8 +48,8 @@ KEY|LEVEL|DISPLAY NAME|PATH
 
 `KEY` is one character, `LEVEL` is the minimum caller access level 1–9,
 and `PATH` is a full EOS path or a filename searched on O: then D1:. Example:
-The bundled catalog contains `B|1|Blackjack Casino|BJACK.COM` and
-`S|1|Lucky Slots|SLOTS.COM`.
+The bundled catalog contains `B|1|Blackjack Casino|bjack.com` and
+`S|1|Lucky Slots|slots.com`.
 Malformed records are ignored.
 
 ## BJHI10.TXT, SLOTHI10.TXT (data drive)

@@ -69,7 +69,7 @@ def make_case(driver: str, driver_number: int, target: Path) -> None:
     files["BBSTIME.TXT"] = atascii_lines("12:00:00")
     system = ["SET PATH=CAR:;D1:", "DEVICE JIFFY"]
     if driver != "NONE":
-        system.append(f"DEVICE D1:{driver.lower()}")
+        system.append(f"DEVICE D1:{driver}")
     files["eossys.sys"] = atascii_lines(*system)
     files["eosauto.bat"] = atascii_lines(
         "SET PATH=CAR:;D1:", "D1:remms.com", "D1:wfc.com"

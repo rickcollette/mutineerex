@@ -34,12 +34,12 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 2. Mount the image as D1: in an exOS 0.4 machine. Use CONFIG item 13 to
    select a preloaded R:, full-handshake R-Verter, two-wire R-Verter, or
    FujiNet/NHAND backend, then cold-restart so exOS can load the device.
-3. Type `D1:/INIT.COM` once. It writes the default configuration, a 100-sector
+3. Type `D1:/init.com` once. It writes the default configuration, a 100-sector
    General message base, a 100-sector user database and a 100-sector caller
-   activity area. Then run `D1:/CONFIG.COM` to manage general settings, message
+   activity area. Then run `D1:/config.com` to manage general settings, message
    bases, file areas and users.
 4. Cold-restart after saving CONFIG. exOS loads the selected `.sys` backend
-   from `eossys.sys`, then `eosauto.bat` starts `REMMS.COM` and `WFC.COM`.
+   from `eossys.sys`, then `eosauto.bat` starts `remms.com` and `wfc.com`.
    Press SELECT on the waiting screen and register the sysop account at the
    keyboard. Setting 15 can optionally use EOS's `X` command for a larger
    message/file buffer. Emulator users whose R: handler is already installed
@@ -69,7 +69,7 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `tools/exos_remms_test.py` | Hidden Altirra/debugger acceptance for every EOS-native REMMS backend |
 | `tools/exos_bbs_test.py` | Persistent EOSFS cold-boot acceptance for WFC with no R: and with all three EOS backends |
 | `EOS.car` | Verified exOS v0.4 release cartridge used by emulator smoke tests |
-| `RESOURCES/EOSTK.atr` | Verified exOS v0.4 toolkit; the build extracts `APETIME.COM` from it |
+| `RESOURCES/EOSTK.atr` | Verified exOS v0.4 toolkit; the build extracts `apetime.com` from it |
 | `RESOURCES/EOSMAINT.atr`, `RESOURCES/SHA256SUMS.txt` | exOS v0.4 maintenance image and release checksums |
 | `original/` | The files of the 1983 disk, as extracted |
 | `listings/` | Listings of the original Atari BASIC programs |
