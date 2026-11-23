@@ -2,9 +2,9 @@
 """Boot Mutineer-eX under exOS with every packaged REMMS backend.
 
 Each case is a newly built, writable EOSFS image containing a persistent
-BBS.CFG and SYSTEM.MET.  The driver-free case runs in headless Atari800; EOS
-driver cases use the canonical Altirra/REMMS runtime.  Every case must reach
-a complete WFC dashboard without a CPU crash.
+BBS.CFG and SYSTEM.MET.  The driver-free case prefers headless Atari800 and
+falls back to the canonical Altirra runtime.  Every case must reach a complete
+WFC dashboard without a CPU crash.
 """
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from run_wfc_dashboard_test import (  # type: ignore  # noqa: E402
     read_screen as alt_read_screen,
 )
 
-from atari800_smoke import Emulator  # noqa: E402
+from atari800_smoke import Emulator, emulator_available  # noqa: E402
 import sdfs  # noqa: E402
 
 
@@ -210,8 +210,12 @@ def run_driver_case(driver: str, driver_number: int, work: Path, index: int,
         deadline = time.monotonic() + 120
         while time.monotonic() < deadline:
             debugger = proc.debugger_text()
-            if ("REMMS fresh modem sync begin" in debugger or
-                    "REMMS open failure" in debugger):
+            if driver == "NONE":
+                ready = "REMMS WFC console ready" in debugger
+            else:
+                ready = ("REMMS fresh modem sync begin" in debugger or
+                         "REMMS open failure" in debugger)
+            if ready:
                 break
             if "Illegal instruction hit" in debugger:
                 tail = " | ".join(debugger.splitlines()[-20:])
@@ -219,7 +223,7 @@ def run_driver_case(driver: str, driver_number: int, work: Path, index: int,
             time.sleep(0.1)
         else:
             tail = " | ".join(proc.debugger_text().splitlines()[-20:])
-            raise RuntimeError("WFC did not enter REMMS wait-call mode: " + tail)
+            raise RuntimeError("WFC did not reach its ready state: " + tail)
         proc.debugger_run_break()
         time.sleep(0.8)
         _, screen = alt_read_screen(proc)
@@ -267,7 +271,7 @@ def main() -> int:
     for index, (driver, driver_number) in enumerate(CASES):
         if driver not in selected:
             continue
-        if driver == "NONE":
+        if driver == "NONE" and emulator_available():
             failures = run_case(driver, driver_number, work, symbols)
         else:
             failures = run_driver_case(

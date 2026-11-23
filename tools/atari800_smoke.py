@@ -10,20 +10,31 @@ from PIL import Image
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_EMU_CANDIDATES = (
+_EMU_CANDIDATES = tuple(filter(None, (
+    os.environ.get("ATARI800_STUDIO"),
     os.path.join(r"C:\Program Files\exBASIC Studio Contributors\exBASIC Studio",
                  "tools", "atari800-studio.exe"),
     os.path.expandvars(
         r"%LOCALAPPDATA%\Programs\exBASIC Studio\tools\atari800-studio.exe"),
     os.path.expandvars(
         r"%LOCALAPPDATA%\Programs\exBASIC Studio personal-rick\tools\atari800-studio.exe"),
-)
+)))
 EMU = next((candidate for candidate in _EMU_CANDIDATES
-            if os.path.isfile(candidate)), _EMU_CANDIDATES[0])
+            if os.path.isfile(candidate)), None)
+
+
+def emulator_available():
+    return EMU is not None
 
 
 class Emulator:
     def __init__(self, image, memory=64):
+        if EMU is None:
+            searched = "\n  ".join(_EMU_CANDIDATES)
+            raise RuntimeError(
+                "atari800-studio.exe was not found; set ATARI800_STUDIO to "
+                "its full path. Searched:\n  " + searched
+            )
         args = [EMU, "-machine", "xl", "-memory", str(memory), "-ntsc",
                 "-nobasic", "-eos", os.path.join(ROOT, "EOS.car"),
                 "-drive1", image, "-turbo"]
