@@ -331,7 +331,14 @@ remms_handler_remote_failure
         rts
 remms_e_put
         stx remms_handler_x
-        lda CIOCHR
+        ; CIO passes the PUT byte in A.  CIOCHR is an IOCB field used by the
+        ; CIO entry point and is not part of the device-handler PUT contract.
+        ; In particular, exOS 0.7 leaves CIOCHR untouched when dispatching the
+        ; handler, so reloading it here turns every remote byte into $00.
+        ; Preserve the former instruction's two bytes so the published
+        ; fixed-address REMMS image and resident-memory ceiling do not move.
+        nop
+        nop
         jsr remms_output_shared
         sty remms_handler_y
         bcs remms_e_put_fail

@@ -20,7 +20,14 @@ ENDFUNC
 ' Closes the modem channel, needed before any disk or printer access
 ' (CLM of the original)
 FUNC CloseModem()
-  ' REMMS owns R: and remains resident while disk I/O is in progress.
+  IF SerialReady
+    IF NOT LocalMode
+      IF PEEK(RemmsSession + 87) = 1 AND PEEK(RemmsPublic + 24) = 2
+        Q1 = RemmsSuspend()
+        IF Q1 THEN Lost = 1
+      ENDIF
+    ENDIF
+  ENDIF
 ENDFUNC
 
 ' Starts the R: concurrent mode with RBuf as the input buffer.
@@ -33,6 +40,14 @@ ENDFUNC
 ' line feed (LMode) settings (OPM of the original)
 FUNC OpenModem()
   POKE 77, 0
+  IF SerialReady
+    IF NOT LocalMode
+      IF PEEK(RemmsPublic + 24) = 4
+        Q1 = RemmsResume()
+        IF Q1 THEN Lost = 1
+      ENDIF
+    ENDIF
+  ENDIF
   IF NOT ModemOpen()
     CLOSE #ModemCh
     OPEN #ModemCh, 12, 0, "E:"
@@ -54,7 +69,13 @@ FUNC GetChr()
       ENDIF
     ELSE
       IF RemmsStatus()
-        C = RemmsGet()
+        ' Terminal detection needs raw CR.  Once ASCII mode is selected,
+        ' use REMMS text input so CR/LF and editing keys are canonical ATASCII.
+        IF AMode
+          C = RemmsGet()
+        ELSE
+          C = RemmsTextGet()
+        ENDIF
         IF Lost OR C < 0 THEN RETURN 24
         IF NOT NoEcho THEN PUT C
         RETURN C

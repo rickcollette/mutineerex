@@ -40,6 +40,17 @@ FUNC RemmsClose()
   RETURN USR(@REMMS_CALL1, RemmsApi + 12, 0)
 ENDFUNC
 
+' Release the physical R: stream without hanging up a connected caller.
+' Disk and printer CIO can then own POKEY/SIO safely.
+FUNC RemmsSuspend()
+  RETURN USR(@REMMS_CALL1, RemmsApi + 12, 1)
+ENDFUNC
+
+' Rebuild the connected stream after disk/printer ownership ends.
+FUNC RemmsResume()
+  RETURN USR(@REMMS_CALL1, RemmsApi + 9, 0)
+ENDFUNC
+
 FUNC RemmsStatus()
   Q1 = USR(@REMMS_CALL0, RemmsApi + 15)
   IF CurrentApp <> 1 AND PEEK(RemmsSession + 87) = 0 AND NOT LocalMode THEN Lost = 1
@@ -49,6 +60,17 @@ ENDFUNC
 FUNC RemmsGet()
   Q1 = USR(@REMMS_CALL0, RemmsApi + 18)
   ' REMMS 1.10 returns $0100-$0104 for no data, carrier, I/O and timeout.
+  IF Q1 > 255
+    IF Q1 <> 256 AND CurrentApp <> 1 AND NOT LocalMode THEN Lost = 1
+    RETURN -1
+  ENDIF
+  RETURN Q1
+ENDFUNC
+
+' Canonical terminal input: ASCII controls and CR/LF become ATASCII values.
+' Raw GET remains available for terminal detection and binary protocols.
+FUNC RemmsTextGet()
+  Q1 = USR(@REMMS_CALL0, RemmsApi + 27)
   IF Q1 > 255
     IF Q1 <> 256 AND CurrentApp <> 1 AND NOT LocalMode THEN Lost = 1
     RETURN -1
@@ -73,15 +95,11 @@ FUNC RemmsCommand(Command$)
 ENDFUNC
 
 FUNC RemmsSetControls()
-  IF AMode
-    ControlChar(0) = 253
-    ControlChar(1) = 126
-    ControlChar(2) = 156
-  ELSE
-    ControlChar(0) = 7
-    ControlChar(1) = 8
-    ControlChar(2) = 24
-  ENDIF
+  ' Application code always uses canonical ATASCII controls.  REMMS converts
+  ' them at the E: boundary for an ASCII caller.
+  ControlChar(0) = 253
+  ControlChar(1) = 126
+  ControlChar(2) = 156
 ENDFUNC
 
 FUNC RemmsLoadSession()

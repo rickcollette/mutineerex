@@ -14,8 +14,13 @@ FUNC ReadFile()
       IF N > 255 THEN N = 255
       BGET #FileCh, ADR(Buf) + BufLen, N
       Code = ERR()
-      Got = DPEEK($348 + 16 * FileCh)
-      BufLen = BufLen + Got
+      ' EOS 0.7 can leave the previous transfer count in the IOCB on the
+      ' zero-byte EOF call.  Only a successful BGET owns a new byte count.
+      Got = 0
+      IF Code = 1
+        Got = DPEEK($348 + 16 * FileCh)
+        BufLen = BufLen + Got
+      ENDIF
       IF Code <> 1 OR Got = 0 THEN EXIT
     LOOP
     IF Code = 136 THEN Code = 1

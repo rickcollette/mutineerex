@@ -49,10 +49,7 @@ def run_case(driver: str, work: Path, index: int) -> list[str]:
     shutil.copyfile(ROOT / "disk" / f"mutinrex-v{version}.atr", atr)
     system = "SET PATH=CAR:;D1:\x9bDEVICE JIFFY\x9b"
     startup = "D1:remms.com\x9b"
-    if driver == "RS232":
-        startup = "rs232 /R\x9b" + startup
-    else:
-        system += f"DEVICE D1:{driver}\x9b"
+    system += f"DEVICE D1:{driver}\x9b"
     system = system.encode("latin-1")
     sdfs.overwrite(str(atr), "eossys.sys", system)
     sdfs.overwrite(str(atr), "eosauto.bat", startup.encode("latin-1"))
