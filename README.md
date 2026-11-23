@@ -60,6 +60,7 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `text/FILES.dat` | Download names and descriptions used by the 40-column categorized file list |
 | `text/BJHI10.txt`, `text/SLOTHI10.txt` | Persistent top-ten score files for the bundled game doors |
 | `tools/build.py` | Builds the programs and disk image; also emits complete WFC debugger maps as `build/WFC.lbl` and `build/WFC.lst` |
+| `tools/release.py` | Builds, validates, tags, pushes and publishes the versioned ATR as a GitHub release |
 | `VERSION` | Mutineer-eX product and release-artifact version |
 | `tools/atascii.py` | Converts text screens between PC text and ATASCII |
 | `tools/atrx.py`, `tools/detok.py` | Extract files from a DOS 2 ATR and list tokenized Atari BASIC programs |
@@ -74,6 +75,23 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `original/` | The files of the 1983 disk, as extracted |
 | `listings/` | Listings of the original Atari BASIC programs |
 | `disk/mutinrex-v1.0.0.atr` | The built exOS 0.4 work disk (EOSFS v2 revision `$47`, volume `MUTINREX`) |
+
+## Publishing a release
+
+Set `VERSION`, commit the release changes, and make sure `gh auth status`
+shows the GitHub account that owns the repository. From a clean worktree run:
+
+```
+python tools/release.py
+```
+
+The script rebuilds and checks the EOSFS image, runs both emulator acceptance
+suites, creates `v<VERSION>`, atomically pushes the current branch and tag to
+`origin`, and publishes the ATR plus `SHA256SUMS.txt` on GitHub. Use
+`--dry-run` to perform the local build/package and print the remote commands,
+or `--notes-file PATH`, `--draft`, and `--prerelease` when needed. It refuses
+dirty trees, conflicting tags, non-fast-forward branches, and existing
+releases rather than overwriting them.
 
 ## Status
 

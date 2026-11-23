@@ -32,6 +32,7 @@
 .exbasic-studio/
 build/
 disk/
+release/
 H/
 listings/
 original/
