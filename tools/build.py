@@ -18,11 +18,13 @@ Usage:  python tools/build.py [--no-disk]
   build/TDAPE.COM          transient APETime helper
   build/CONFIG.XEX         four-part administration console
   build/INIT.XEX           one-time board initialization
-  disk/mutinrex-v<VERSION>.atr  exOS 0.4 work disk (native EOSFS v2 format)
+  disk/mutinrex-eos-v<VERSION>.atr  exOS work disk (native EOSFS v2 format)
+  disk/mutinrex-sdx-v<VERSION>.atr  SpartaDOS X work disk (SDFS 2.1 format)
 
 The programs use lowercase .com names on the case-sensitive EOSFS disk. EOS
 loads exactly one R: backend from eossys.sys with DEVICE, then eosauto.bat
 starts remms.com and wfc.com.
+The SDX image packages the same relocatable backends as uppercase .COM files.
 exBASIC RUN chains the remaining modules.
 
 Every screen has an ASCII text/*.txt file and a native ATASCII
@@ -70,7 +72,8 @@ def read_version():
 
 
 VERSION = read_version()
-ATR_RELATIVE_PATH = "disk/%s-v%s.atr" % (PRODUCT_ID, VERSION)
+EOS_ATR_RELATIVE_PATH = "disk/%s-eos-v%s.atr" % (PRODUCT_ID, VERSION)
+SDX_ATR_RELATIVE_PATH = "disk/%s-sdx-v%s.atr" % (PRODUCT_ID, VERSION)
 
 
 def audit_branding():
@@ -96,23 +99,30 @@ def audit_branding():
         sys.exit("retired branding remains:\n  " + "\n  ".join(failures))
 
 
-def audit_packaged_branding(atr):
-    """Reject malformed EOSFS metadata and retired packaged branding."""
+def audit_packaged_branding(atr, expect_eos):
+    """Reject malformed filesystem metadata and retired packaged branding."""
     volume = sdfs.Volume(atr)
     entries = volume.check()
     if volume.errors:
         sys.exit("invalid release ATR: " + "; ".join(volume.errors))
     failures = []
-    expected_mapents = (volume.seclen - 4) // 4
-    if volume.header_mapents != expected_mapents:
-        failures.append("EOSFS header has %d extent slots, expected %d" %
-                        (volume.header_mapents, expected_mapents))
-    boot = (volume.img.sector(1) + volume.img.sector(2) +
-            volume.img.sector(3))
-    expected_boot = sdfs.EOSFS_BOOTCODE
-    if (boot[6:9] != expected_boot[6:9] or
-            boot[44:] != expected_boot[44:]):
-        failures.append("EOSFS boot sectors do not match EOS FORMAT")
+    if volume.eosfs != expect_eos:
+        failures.append("filesystem is %s, expected %s" %
+                        ("EOSFS" if volume.eosfs else "SDFS",
+                         "EOSFS" if expect_eos else "SDFS"))
+    if expect_eos:
+        expected_mapents = (volume.seclen - 4) // 4
+        if volume.header_mapents != expected_mapents:
+            failures.append("EOSFS header has %d extent slots, expected %d" %
+                            (volume.header_mapents, expected_mapents))
+        boot = (volume.img.sector(1) + volume.img.sector(2) +
+                volume.img.sector(3))
+        expected_boot = sdfs.EOSFS_BOOTCODE
+        if (boot[6:9] != expected_boot[6:9] or
+                boot[44:] != expected_boot[44:]):
+            failures.append("EOSFS boot sectors do not match EOS FORMAT")
+    elif volume.version != 0x21:
+        failures.append("SDFS revision is $%02X, expected $21" % volume.version)
     alloc_hint = volume.boot[18] | volume.boot[19] << 8
     if alloc_hint and alloc_hint in volume.bitmap_used():
         failures.append("EOSFS allocation hint points at used sector %d" %
@@ -168,6 +178,11 @@ DRIVER_FILES = [
     ("build/REMMS.COM", "remms.com"),
     ("build/TDAPE.COM", "tdape.com"),
 ]
+SDX_DRIVER_RENAMES = {
+    "RVRFULL.sys": "RVRFULL.COM",
+    "RVRTWOW.sys": "RVRTWOW.COM",
+    "NHAND.sys": "NHAND.COM",
+}
 TOOLKIT_FILES = [("/apetime.com", "apetime.com")]
 EOS_TOOLKIT = "RESOURCES/EOSTK.atr"
 # CONFIG rewrites this as DEVICE RTIME8 when that clock source is selected.
@@ -249,7 +264,7 @@ def assemble(source, output, defines=()):
 
 
 def compile_remms():
-    """Build the matched REMMS 1.10 core and every EOS R: backend."""
+    """Build the matched REMMS 1.10 core and every R: backend."""
     assemble("RESOURCES/REMMS/src/remms_sdx.asm", "build/REMMS.COM")
     assemble("RESOURCES/REMMS/rverter/rvrhand.asm", "build/RVRFULL.SYS",
              ("RVR_FULL=1",))
@@ -375,17 +390,32 @@ def main():
             g.write(contents)
         files.append(dest)
     os.makedirs(path("disk"), exist_ok=True)
-    atr = path(ATR_RELATIVE_PATH)
-    print("> " + ATR_RELATIVE_PATH)
     contents = {}
     for filename in files:
         with open(filename, "rb") as f:
             contents[os.path.basename(filename)] = f.read()
-    sdfs.build(atr, DISK_SECTORS, DISK_SECTOR_SIZE, contents,
+
+    eos_atr = path(EOS_ATR_RELATIVE_PATH)
+    print("> " + EOS_ATR_RELATIVE_PATH)
+    sdfs.build(eos_atr, DISK_SECTORS, DISK_SECTOR_SIZE, contents,
                volname=VOLUME_NAME, eosfs=True)
-    if os.path.getsize(atr) != ATR_SIZE:
-        sys.exit("wrong ATR size after template build")
-    audit_packaged_branding(atr)
+    if os.path.getsize(eos_atr) != ATR_SIZE:
+        sys.exit("wrong EOS ATR size after template build")
+    audit_packaged_branding(eos_atr, True)
+
+    sdx_contents = {}
+    eos_only = {name for name, _ in EOS_SYSTEM_FILES}
+    for name, data in contents.items():
+        if name in eos_only:
+            continue
+        sdx_contents[SDX_DRIVER_RENAMES.get(name, name).upper()] = data
+    sdx_atr = path(SDX_ATR_RELATIVE_PATH)
+    print("> " + SDX_ATR_RELATIVE_PATH)
+    sdfs.build(sdx_atr, DISK_SECTORS, DISK_SECTOR_SIZE, sdx_contents,
+               volname=VOLUME_NAME, eosfs=False)
+    if os.path.getsize(sdx_atr) != ATR_SIZE:
+        sys.exit("wrong SDX ATR size after template build")
+    audit_packaged_branding(sdx_atr, False)
 
 
 if __name__ == "__main__":

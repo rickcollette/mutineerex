@@ -179,39 +179,45 @@ def preflight(remote: str, version: str) -> tuple[str, str, str, bool]:
     return branch, head, repo, local_tag is not None
 
 
-def build_and_test(version: str, skip_runtime_tests: bool) -> Path:
-    run([sys.executable, "tools/build.py"])
-    atr = ROOT / "disk" / ("%s-v%s.atr" % (PRODUCT_ID, version))
-    if not atr.is_file():
-        raise ReleaseError("build did not produce " + str(atr))
-    run([sys.executable, "tools/sdfs.py", "check", str(atr)])
-    if not skip_runtime_tests:
-        run([sys.executable, "tools/exos_remms_test.py"])
-        run([sys.executable, "tools/exos_bbs_test.py"])
-    return atr
+def build_and_test(version: str, skip_runtime_tests: bool) -> tuple[Path, Path]:
+    command = [sys.executable, "tools/build_all.py", "--bump", "none"]
+    if skip_runtime_tests:
+        command.append("--skip-runtime-tests")
+    run(command)
+    atrs = tuple(
+        ROOT / "disk" / ("%s-%s-v%s.atr" % (PRODUCT_ID, platform, version))
+        for platform in ("eos", "sdx")
+    )
+    for atr in atrs:
+        if not atr.is_file():
+            raise ReleaseError("build did not produce " + str(atr))
+    return atrs
 
 
-def package(version: str, atr: Path) -> tuple[Path, Path]:
+def package(version: str, atrs: tuple[Path, Path]) -> tuple[Path, ...]:
     out = ROOT / "release" / ("v" + version)
     out.mkdir(parents=True, exist_ok=True)
-    release_atr = out / atr.name
+    release_atrs = tuple(out / atr.name for atr in atrs)
     checksum = out / "SHA256SUMS.txt"
-    for target in (release_atr, checksum):
+    for target in (*release_atrs, checksum):
         if target.exists():
             target.unlink()
-    shutil.copyfile(atr, release_atr)
-    digest = hashlib.sha256(release_atr.read_bytes()).hexdigest()
-    checksum.write_text("%s  %s\n" % (digest, release_atr.name),
-                        encoding="ascii", newline="\n")
+    lines = []
+    for atr, release_atr in zip(atrs, release_atrs):
+        shutil.copyfile(atr, release_atr)
+        digest = hashlib.sha256(release_atr.read_bytes()).hexdigest()
+        lines.append("%s  %s\n" % (digest, release_atr.name))
+    checksum.write_text("".join(lines), encoding="ascii", newline="\n")
     print("Release assets:")
-    print("  " + str(release_atr.relative_to(ROOT)))
+    for release_atr in release_atrs:
+        print("  " + str(release_atr.relative_to(ROOT)))
     print("  " + str(checksum.relative_to(ROOT)))
-    return release_atr, checksum
+    return *release_atrs, checksum
 
 
 def publish(args: argparse.Namespace, version: str, branch: str,
             expected_head: str, repo: str, local_tag_exists: bool,
-            assets: tuple[Path, Path]) -> None:
+            assets: tuple[Path, ...]) -> None:
     tag = "v" + version
     title = "%s %s" % (PRODUCT, version)
     tag_command = ["git", "tag", "--annotate", tag, "--message", title]
@@ -287,8 +293,8 @@ def main() -> int:
     try:
         version = read_version()
         branch, head, repo, local_tag_exists = preflight(args.remote, version)
-        atr = build_and_test(version, args.skip_runtime_tests)
-        assets = package(version, atr)
+        atrs = build_and_test(version, args.skip_runtime_tests)
+        assets = package(version, atrs)
         publish(args, version, branch, head, repo, local_tag_exists, assets)
         return 0
     except (OSError, ReleaseError) as exc:

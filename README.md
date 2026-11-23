@@ -1,4 +1,4 @@
-# Mutineer-eX — an exBASIC BBS for exOS
+# Mutineer-eX — an exBASIC BBS for exOS and SpartaDOS X
 
 Mutineer/eX is a port of **AMIS** (Atari Message and Information System), the
 1983 Atari BASIC bulletin board system by Tom Giese, revised by Larry
@@ -10,6 +10,7 @@ delete) and a setup program.
 | Document | For |
 |----------|-----|
 | [docs/SYSOP-GUIDE.md](docs/SYSOP-GUIDE.md) | Setting up and running a board: disks, CONFIG, the sysop account, daily operation, troubleshooting |
+| [docs/SDX-GUIDE.md](docs/SDX-GUIDE.md) | SpartaDOS X image, driver selection and startup sequence |
 | [docs/USER-COMMANDS.md](docs/USER-COMMANDS.md) | What callers see and the commands they use |
 | [docs/MODDING.md](docs/MODDING.md) | Changing the program: source layout, building, exBASIC limits, adding commands and settings |
 | [docs/MODULES.md](docs/MODULES.md) | REMMS ABI, resident session handoff, module flow and door contract |
@@ -20,9 +21,9 @@ delete) and a setup program.
 
 Clone `https://github.com/rickcollette/mutinrex.git`, then:
 
-1. Build: `python tools/build.py`. This makes
-   `disk/mutinrex-v1.0.0.atr` in exOS 0.4's native EOSFS v2 format. It uses a
-   65,535-sector, 16 MB geometry and contains
+1. Build: `python tools/build.py`. This makes an EOSFS image at
+   `disk/mutinrex-eos-v<VERSION>.atr` and an SDFS 2.1 image at
+   `disk/mutinrex-sdx-v<VERSION>.atr`. Both use a 65,535-sector, 16 MB geometry and contain
    the programs, text screens and a controlled sample download.
    `eossys.sys` initially activates exOS's hardware-independent JIFFY
    clock. The image includes the complete REMMS 1.10/session-9 core plus
@@ -59,8 +60,9 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `text/*.txt`, `text/*.ata` | Paired ASCII and native ATASCII text screens; TEST.UDL.txt is the sample download source |
 | `text/FILES.dat` | Download names and descriptions used by the 40-column categorized file list |
 | `text/BJHI10.txt`, `text/SLOTHI10.txt` | Persistent top-ten score files for the bundled game doors |
-| `tools/build.py` | Builds the programs and disk image; also emits complete WFC debugger maps as `build/WFC.lbl` and `build/WFC.lst` |
-| `tools/release.py` | Builds, validates, tags, pushes and publishes the versioned ATR as a GitHub release |
+| `tools/build.py` | Builds the programs plus EOSFS and SDX disk images; also emits complete WFC debugger maps as `build/WFC.lbl` and `build/WFC.lst` |
+| `tools/build_all.py` | Increments `VERSION` (patch by default), builds both variants, validates both ATRs, and runs both emulator suites against EOS |
+| `tools/release.py` | Builds, validates, tags, pushes and publishes both versioned ATRs as one GitHub release |
 | `VERSION` | Mutineer-eX product and release-artifact version |
 | `tools/atascii.py` | Converts text screens between PC text and ATASCII |
 | `tools/atrx.py`, `tools/detok.py` | Extract files from a DOS 2 ATR and list tokenized Atari BASIC programs |
@@ -74,20 +76,29 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `RESOURCES/EOSMAINT.atr`, `RESOURCES/SHA256SUMS.txt` | exOS v0.4 maintenance image and release checksums |
 | `original/` | The files of the 1983 disk, as extracted |
 | `listings/` | Listings of the original Atari BASIC programs |
-| `disk/mutinrex-v1.0.0.atr` | The built exOS 0.4 work disk (EOSFS v2 revision `$47`, volume `MUTINREX`) |
+| `disk/mutinrex-eos-v<VERSION>.atr` | The versioned exOS work disk (EOSFS v2 revision `$47`, volume `MUTINREX`) |
+| `disk/mutinrex-sdx-v<VERSION>.atr` | The versioned SpartaDOS X work disk (SDFS 2.1, volume `MUTINREX`) |
 
 ## Publishing a release
 
-Set `VERSION`, commit the release changes, and make sure `gh auth status`
-shows the GitHub account that owns the repository. From a clean worktree run:
+Prepare a patch release, including the version increment and complete test
+matrix, then commit the resulting source and `VERSION` changes:
+
+```
+python tools/build_all.py
+```
+
+Use `--bump minor`, `--bump major`, or `--bump none` when appropriate. Then
+make sure `gh auth status` shows the GitHub account that owns the repository.
+From a clean worktree run:
 
 ```
 python tools/release.py
 ```
 
-The script rebuilds and checks the EOSFS image, runs both emulator acceptance
+The script rebuilds and checks both images, runs both EOS emulator acceptance
 suites, creates `v<VERSION>`, atomically pushes the current branch and tag to
-`origin`, and publishes the ATR plus `SHA256SUMS.txt` on GitHub. Use
+`origin`, and publishes both ATRs plus `SHA256SUMS.txt` on GitHub. Use
 `--dry-run` to perform the local build/package and print the remote commands,
 or `--notes-file PATH`, `--draft`, and `--prerelease` when needed. It refuses
 dirty trees, conflicting tags, non-fast-forward branches, and existing

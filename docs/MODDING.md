@@ -11,7 +11,7 @@ BASIC. `C-differences.md` is the most useful chapter for this program.
 
 | Command | Result |
 |---------|--------|
-| `python tools/build.py` | REMMS, five core BBS modules, bundled doors, CONFIG, INIT and the versioned exOS 0.4 EOSFS v2 work image |
+| `python tools/build.py` | REMMS, all BBS programs, and versioned EOSFS and SDFS 2.1 work images |
 | `python tools/build.py --no-disk` | The resident and executable programs only |
 | `python tools/exos_remms_test.py` | Hidden Altirra/debugger acceptance for RVRFULL, RVRTWOW and NHAND through the real exOS DEVICE loader |
 | `python tools/exos_bbs_test.py` | Persistent cold-boot WFC acceptance for NONE, RVRFULL, RVRTWOW and NHAND |
@@ -34,7 +34,7 @@ The 16 MB ATR is built from scratch as native EOSFS v2 revision `$47`. Its
 boot sectors, 63-entry extent-map header, allocation hint, optimizer and skew
 fields match an image made by exOS 0.4's `FORMAT /QQ`. `build.py` checks those
 formatter invariants and the resulting size; `python tools/sdfs.py check
-disk/mutinrex-v1.0.0.atr` checks its directory, extent maps, bitmap and
+disk/mutinrex-eos-v<VERSION>.atr` checks its directory, extent maps, bitmap and
 free-sector count.
 
 The REMMS acceptance test defaults to the full source tree at
@@ -336,4 +336,4 @@ line 9000...), so you can compare the behavior.
   modem: logon, messages, files. XMODEM is disabled in local mode.
 * With the Studio emulator profile, telnet to `localhost 9097` to call the
   board through the emulated modem.
-* Keep a copy of `disk/mutinrex-v1.0.0.atr` with test data; `build.py` replaces it.
+* Keep copies of the versioned EOS and SDX ATRs with test data; `build.py` replaces them.

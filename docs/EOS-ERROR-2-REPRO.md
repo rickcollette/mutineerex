@@ -13,12 +13,12 @@ Build and check the release image:
 
 ```powershell
 python tools/build.py
-python tools/sdfs.py check disk/mutinrex-v1.0.0.atr
+python tools/sdfs.py check disk/mutinrex-eos-v<VERSION>.atr
 python tools/exos_bbs_test.py
 python tools/exos_remms_test.py
 ```
 
-The release artifact is `disk/mutinrex-v1.0.0.atr`: 65,535 sectors of 256
+The EOS release artifact is `disk/mutinrex-eos-v<VERSION>.atr`: 65,535 sectors of 256
 bytes, 16,776,592 bytes total, EOSFS v2 revision `$47`, volume `MUTINREX`.
 
 At cold boot, exOS reads these files in this order:

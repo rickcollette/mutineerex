@@ -46,7 +46,7 @@ def run_case(driver: str, work: Path, index: int) -> list[str]:
     profile = work / (driver.lower() + ".ini")
     debug_log = work / (driver.lower() + ".log")
     version = (ROOT / "VERSION").read_text(encoding="ascii").strip()
-    shutil.copyfile(ROOT / "disk" / f"mutinrex-v{version}.atr", atr)
+    shutil.copyfile(ROOT / "disk" / f"mutinrex-eos-v{version}.atr", atr)
     system = "SET PATH=CAR:;D1:\x9bDEVICE JIFFY\x9b"
     startup = "D1:remms.com\x9b"
     system += f"DEVICE D1:{driver}\x9b"

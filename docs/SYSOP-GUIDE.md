@@ -10,7 +10,7 @@ it every day and what to do when something goes wrong.
 |------|-------|
 | Atari 8-bit computer with 48 KB or more, or an emulator | The exBASIC Studio emulator profile *Atari 800XL (NTSC)* is set up for Mutineer-eX |
 | exOS 0.4 cartridge | Its DOS gives the D: device with NOTE and POINT (needed by the message and caller files), the start-up batch, the clock, and an `RS232` command for a physical Atari 850 |
-| An EOSFS v2 work disk | `disk/mutinrex-v1.0.0.atr`, volume `MUTINREX` |
+| An EOSFS v2 work disk | `disk/mutinrex-eos-v<VERSION>.atr`, volume `MUTINREX` |
 | An R: device | A preloaded emulator R:, an R-Verter using `RVRFULL.sys`/`RVRTWOW.sys`, or FujiNet using `NHAND.sys` |
 | A Hayes compatible modem | Real or emulated; Mutineer-eX sends `ATZ`, the init string, `ATA` to answer and drops DTR to hang up |
 | A printer on P: (optional) | The activity log, as on the original board |
@@ -23,7 +23,7 @@ baud. To call your board from the PC, connect a telnet client to
 `localhost` port 9097 while Mutineer-eX is waiting for a call: the emulated
 modem gives a RING, Mutineer-eX answers, and you see the logon.
 
-Mount `disk/mutinrex-v1.0.0.atr` as drive 1 in the profile.
+Mount `disk/mutinrex-eos-v<VERSION>.atr` as drive 1 in the profile.
 
 ### The emulator setup in Altirra
 
@@ -51,7 +51,7 @@ python tools/build.py
 
 This compiles REMMS 1.10, all three EOS communications drivers, the five core
 BBS modules, bundled doors and two administration programs, then writes the
-tested native EOSFS v2 work disk `disk/mutinrex-v1.0.0.atr`. The image uses the maximum 65,535-sector geometry
+tested native EOSFS v2 work disk `disk/mutinrex-eos-v<VERSION>.atr`. The image uses the maximum 65,535-sector geometry
 (about 16 MB) and leaves ample room for INIT's three 100-sector data areas.
 The build uses the filesystem writer synchronized from exOS v0.4. The files:
 
@@ -490,7 +490,7 @@ record automatically.
 | `ERROR- 2` immediately when loading CONFIG | The disk has an older CONFIG.COM that used a 16 KB rewrite buffer; rebuild with `python tools/build.py` and copy the new program |
 | `ERROR- 2` immediately when loading a BBS module | A custom build omitted `src/fixed_strings.asm` or was linked below REMMS; rebuild with `python tools/build.py` and copy all five core modules |
 | `ERROR 162 CREATING D1:CALLERS.DAT` during INIT | The disk is full, usually because an older INIT was run again without releasing the existing database chains. Use the current `INIT.COM`; it explicitly deletes `CALLERS.DAT`, `USERS.DAT` and `SYSTEM.MET` before recreating them. |
-| `ls -la` shows no files and `INIT` gives error 170 | Rebuild the disk with the current `tools/build.py`, then run `python tools/sdfs.py check disk/mutinrex-v1.0.0.atr`; Mutineer-eX requires exOS 0.4's EOSFS v2 revision `$47` image |
+| `ls -la` shows no files and `INIT` gives error 170 | Rebuild the disk with the current `tools/build.py`, then run `python tools/sdfs.py check disk/mutinrex-eos-v<VERSION>.atr`; Mutineer-eX requires EOSFS v2 revision `$47` |
 | `ls -la` gives a disk error | The work image is damaged. Rebuild it, or use `python tools/sdfs.py check` to identify directory, extent-map or bitmap corruption |
 | `CAN'T OPEN R:` during a call | The R: device stopped answering; the call ends |
 | The caller is dropped at once | Turn Carrier watch off in CONFIG |

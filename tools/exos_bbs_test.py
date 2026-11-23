@@ -48,7 +48,7 @@ def atascii_lines(*values: str) -> bytes:
 
 def make_case(driver: str, driver_number: int, target: Path) -> None:
     version = (ROOT / "VERSION").read_text(encoding="ascii").strip()
-    source = ROOT / "disk" / f"mutinrex-v{version}.atr"
+    source = ROOT / "disk" / f"mutinrex-eos-v{version}.atr"
     volume = sdfs.Volume(str(source))
     entries = volume.check()
     if volume.errors:
