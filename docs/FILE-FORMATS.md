@@ -27,7 +27,7 @@ Written by CONFIG and read by the BBS and CONFIG
 | 11 | Messages drive | `D1:` |
 | 12 | Text drive | `D1:` |
 | 13 | Downloads drive | `D1:` |
-| 14 | R: backend: 0 = existing/none, 1 = legacy RS232.COM, 2 = RVRFULL, 3 = RVRTWOW, 4 = NHAND/FujiNet | `0` |
+| 14 | R: backend: 0 = existing/none, 1 = Atari 850 setup (`RHND850.COM` on SDX; legacy `RS232.COM` on exOS), 2 = RVRFULL, 3 = RVRTWOW, 4 = NHAND/FujiNet | `0` |
 | 15 | Start the BBS from `eosauto.bat`, 1 or 0 | `1` |
 | 16 | Start it with X (cartridge off), 1 or 0 | `0` |
 | 17 | Clock: 0 = manual, 1 = current EOS/JIFFY, 2 = APETime, 3 = R-Time 8 | `0` |

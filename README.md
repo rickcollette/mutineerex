@@ -27,15 +27,18 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
    the programs, text screens and a controlled sample download.
    `eossys.sys` initially activates exOS's hardware-independent JIFFY
    clock. The image includes the complete REMMS 1.10/session-9 core plus
-   the EOS device drivers `RVRFULL.sys`, `RVRTWOW.sys` and `NHAND.sys`.
+   the Atari 850 handler `RHND850.COM` and the EOS device drivers
+   `RVRFULL.sys`, `RVRTWOW.sys` and `NHAND.sys`.
    CONFIG item 16 can select manual entry, APETime, the current
    JIFFY value, or an R-Time 8 and rewrites the clock setup automatically.
    CONFIG item 17 can use exOS's `O:` RAM disk; CONFIG item 5 opens RDCONF's
    capacity-aware individual and extension-group cache picker. Altirra 1088K
    is recommended.
-2. Mount the image as D1: in an exOS 0.7 machine. Use CONFIG item 13 to
-   select a preloaded R:, full-handshake R-Verter, two-wire R-Verter, or
-   FujiNet/NHAND backend, then cold-restart so exOS can load the device.
+2. Mount the matching image as D1:. On SpartaDOS X, CONFIG item 13 can select
+   **850 + MODEM**, **R-VERTER FULL + MODEM**,
+   **R-VERTER 2-WIRE + MODEM**, **FUJINET**, or an existing R: handler.
+   On exOS, use an existing R:, R-Verter, or FujiNet. Cold-restart after the
+   startup files have been saved.
 3. Type `D1:/init.com` once. It writes the default configuration, a 100-sector
    General message base, a 100-sector user database and a 100-sector caller
    activity area. Then run `D1:/config.com` to manage general settings, message
@@ -69,9 +72,10 @@ Clone `https://github.com/rickcollette/mutinrex.git`, then:
 | `tools/atrx.py`, `tools/detok.py` | Extract files from a DOS 2 ATR and list tokenized Atari BASIC programs |
 | `tools/sdfs.py` | Build, check, list and extract EOSFS v2 and SpartaDOS SDFS ATR images; synchronized with exOS v0.4 |
 | `tools/carfs.py` | List and extract the CAR: files of an EOS cartridge image |
-| `drivers/RS232.COM` | Legacy Atari 850 post-boot bootstrap; separate from the three current EOS-native REMMS backends |
+| `drivers/RHND850.COM` | Supported resident R: handler for a real or emulated Atari 850 |
+| `drivers/RS232.COM` | Legacy Atari 850 bootstrap retained for reference |
 | `tools/exos_remms_test.py` | Hidden Altirra/debugger acceptance for every EOS-native REMMS backend |
-| `tools/exos_bbs_test.py`, `tools/sdx_bbs_test.py` | Persistent EOSFS/SDFS cold-boot acceptance for WFC with no R: and with all three current backends |
+| `tools/exos_bbs_test.py`, `tools/sdx_bbs_test.py` | Persistent EOSFS/SDFS cold-boot acceptance for WFC; SDX also covers the Atari 850 handler |
 | `tools/eos_ramdisk_test.py` | Formats and catalogs O:, removes every D1 core module name, and proves WFC boots with the RAM-cache flag active |
 | `tools/eos_telnet_test.py`, `tools/sdx_telnet_test.py`, `tools/sdx_ramdisk_telnet_test.py` | Real NHAND/FujiNet TCP registration and MESSAGE/MAINBBS module-chain journeys, including no-D1-fallback RAM-disk paths on EOS and SDX |
 | `EOS.car` | Verified exOS v0.7 release cartridge used by emulator smoke tests |

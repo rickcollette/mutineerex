@@ -47,7 +47,12 @@ def make_case(target: Path) -> None:
     files["SYSTEM.MET"] = atascii_lines("1", "0", "0")
     files["BBSDATE.TXT"] = atascii_lines("11/23/2026")
     files["BBSTIME.TXT"] = atascii_lines("12:00:00")
-    startup: list[str] = []
+    startup: list[str] = [
+        "ECHO MUTINEER-EX STARTS IN 5 SECONDS",
+        "ECHO PRESS BREAK FOR THE SDX PROMPT",
+        "PAUSE 5",
+        "FORMAT /QQ O: MUTINREX",
+    ]
     startup.extend(
         command
         for name in PROGRAMS

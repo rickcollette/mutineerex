@@ -11,12 +11,30 @@ FUNC GeneralConfig()
     IF In$ = "S"
       Status = SaveSettings()
       IF Status = 1
+        Changed = 0
         CLOSE #1
-        OPEN #1, 8, 0, "D1:RAMCACHE.APPLY"
+        OPEN #1, 4, 0, "D1:RAMCACHE.APPLY"
         Status = ERR()
-        IF Status = 1 THEN PRINT #1; "1"
         CLOSE #1
-        IF Status = 1 THEN RUN "D1:rdconf.com"
+        IF Status = 1 THEN XIO 33, #1, 0, 0, "D1:RAMCACHE.APPLY"
+        IF StartOption(2)
+          ' RAM caching needs an explicit file plan.  Enter RDCONF instead
+          ' of consuming the save as an apply-only startup rewrite.
+          RUN "D1:rdconf.com"
+        ELSE
+          ' RDCONF owns both EOS and SDX startup generation.  With caching
+          ' off, ask it to rewrite startup immediately and return to CONFIG.
+          CLOSE #1
+          OPEN #1, 8, 0, "D1:RAMCACHE.APPLY"
+          Status = ERR()
+          IF Status = 1 THEN PRINT #1; "1"
+          CLOSE #1
+          IF Status = 1
+            RUN "D1:rdconf.com"
+          ELSE
+            PRINT "STARTUP REQUEST ERROR "; Status
+          ENDIF
+        ENDIF
       ELSE
         PRINT "SAVE ERROR "; Status
       ENDIF
@@ -51,7 +69,7 @@ FUNC ShowGeneralMenu()
   PRINT "10 MESSAGES "; MsgDrive$
   PRINT "11 TEXT     "; TextDrive$
   PRINT "12 FILES    "; FileDrive$
-  PRINT "13 R DRIVER "; RName$(RDriver)
+  PRINT "13 MODEM SETUP "; RName$(RDriver)
   PRINT "14 AUTOSTART "; OnOff$(AutoStart)
   PRINT "15 START X   "; OnOff$(StartOption(0))
   PRINT "16 CLOCK     "; ClockName$(StartOption(1))
@@ -66,11 +84,11 @@ FUNC OnOff$(Flag)
 ENDFUNC
 
 FUNC RName$(Driver)
-  IF Driver = 1 THEN RETURN "RS232"
-  IF Driver = 2 THEN RETURN "RVRFULL"
-  IF Driver = 3 THEN RETURN "RVRTWOW"
-  IF Driver = 4 THEN RETURN "NHAND"
-  RETURN "NONE"
+  IF Driver = 1 THEN RETURN "850 + MODEM"
+  IF Driver = 2 THEN RETURN "R-VERTER FULL + MODEM"
+  IF Driver = 3 THEN RETURN "R-VERTER 2-WIRE + MODEM"
+  IF Driver = 4 THEN RETURN "FUJINET"
+  RETURN "EXISTING R: / NONE"
 ENDFUNC
 
 FUNC ClockName$(Source)

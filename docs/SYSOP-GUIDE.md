@@ -11,7 +11,7 @@ it every day and what to do when something goes wrong.
 | Atari 8-bit computer with 48 KB or more, or an emulator | The exBASIC Studio emulator profile *Atari 800XL (NTSC)* is set up for Mutineer-eX |
 | exOS 0.7 cartridge | Its DOS gives the D: device with NOTE and POINT (needed by the message and caller files), the start-up batch, the clock, and an `RS232` command for a physical Atari 850 |
 | An EOSFS v2 work disk | `disk/mutinrex-eos-v<VERSION>.atr`, volume `MUTINREX` |
-| An R: device | A preloaded emulator R:, an R-Verter using `RVRFULL.sys`/`RVRTWOW.sys`, or FujiNet using `NHAND.sys` |
+| An R: device | On SDX, an Atari 850 using `RHND850.COM`; otherwise a preloaded R:, an R-Verter using `RVRFULL.sys`/`RVRTWOW.sys`, or FujiNet using `NHAND.sys` |
 | A Hayes compatible modem | Real or emulated; Mutineer-eX sends `ATZ`, the init string, `ATA` to answer and drops DTR to hang up |
 | A printer on P: (optional) | The activity log, as on the original board |
 
@@ -27,15 +27,16 @@ Mount `disk/mutinrex-eos-v<VERSION>.atr` as drive 1 in the profile.
 
 ### The emulator setup in Altirra
 
-For an R-Verter device select **RVRFULL** only when DTR and carrier wiring are
-present; select **RVRTWOW** for RX/TX-only hardware. For FujiNet select
-**NHAND**, which exposes an inbound TCP listener through the N: device.
-CONFIG writes the corresponding `DEVICE D1:name` line and requires a cold
-restart. Altirra's preloaded/high-level R: modes use **NONE**.
+On SpartaDOS X, an Atari 850 with a WiModem232/32 uses **850 + MODEM**. For an R-Verter
+device select **R-VERTER FULL + MODEM** only when DTR and carrier wiring are
+present; select **R-VERTER 2-WIRE + MODEM** for RX/TX-only hardware. For
+FujiNet select **FUJINET**, which exposes an inbound TCP listener through the N: device.
+CONFIG writes the corresponding platform startup commands and requires a cold
+restart. Altirra's preloaded/high-level R: modes use **EXISTING R: / NONE**.
 
-The old `RS232.COM` choice remains for legacy Atari 850 experiments, but it is
-not one of the converted REMMS 1.10 drivers and is not part of the exOS driver
-acceptance suite.
+The old `RS232.COM` bootstrap remains for the legacy exOS selection, but it did
+not reliably continue into REMMS in automated testing. The supported Atari 850
+path on SpartaDOS X is `RHND850.COM`.
 
 If the board hangs up as soon as a caller connects, turn **Carrier watch**
 off in CONFIG (see [CONFIG](#4-config-the-settings)): some modems and
@@ -58,6 +59,7 @@ The build uses the filesystem writer synchronized from exOS v0.4. The files:
 | File | What it is |
 |------|------------|
 | `remms.com` | Full REMMS 1.10 resident modem routing and session-9 handoff |
+| `RHND850.COM` | SDX resident R: handler for a real or emulated Atari 850 |
 | `RVRFULL.sys` | EOS device for a full-handshake R-Verter (`$1F` capabilities) |
 | `RVRTWOW.sys` | EOS device for a two-wire R-Verter (`$19` capabilities) |
 | `NHAND.sys` | EOS device mapping REMMS R: operations to a FujiNet N: TCP listener |
@@ -71,7 +73,7 @@ The build uses the filesystem writer synchronized from exOS v0.4. The files:
 | `slots.com` | Lucky Slots three-reel game door |
 | `config.com` | General, message-base, file-area and user administration (`CONFIG`) |
 | `init.com` | One-time creation of a new board (`INIT`) |
-| `RS232.COM` | Legacy Atari 850 bootstrap retained separately from the EOS-native REMMS drivers |
+| `RS232.COM` | Legacy Atari 850 bootstrap retained for reference |
 | `apetime.com` | Gets PC date/time from an APE, AspeQt or RespeQt SIO host; CONFIG checks whether it succeeded |
 | `eossys.sys` | Loads the selected R-Verter/NHAND backend, clock, and optional RAM disk through exOS `DEVICE` lines |
 | `eosauto.bat` | Lowercase exOS startup file; the pristine image adds D1: to `PATH`, and INIT/CONFIG replace it with the BBS startup |
@@ -162,7 +164,7 @@ sysop are forced to level 9.
 | 10 | Messages drive | `D1:` | `MESSAGE.DIL`, `MESSAGE.IIL`, `MESSAGE.MIL` bases |
 | 11 | Text screens drive | `D1:` | Paired `.TXT` and `.ATA` versions of `WELC`, `BULL`, `FUNC`, `HELP`, `MESGM`, `FILEM`, `NEWU` |
 | 12 | Downloads drive | `D1:` | Controlled `NAME.CTL` files |
-| 13 | R: driver | NONE | NONE: use an already installed emulator R:. RVRFULL: R-Verter with DTR/carrier wiring. RVRTWOW: RX/TX-only R-Verter. NHAND: FujiNet N: TCP server. RS232 is the retained legacy 850 bootstrap. Cold-restart after changing this setting. |
+| 13 | Modem setup | EXISTING R: / NONE | On SDX, 850 + MODEM selects RHND850 for an Atari 850 with an attached modem such as WiModem232/32. R-VERTER FULL + MODEM means DTR/carrier wiring; R-VERTER 2-WIRE + MODEM means RX/TX only; FUJINET means the N: TCP server. EXISTING R: / NONE means a handler is already loaded, or local-only use. Cold-restart after changing this setting. |
 | 14 | Start the BBS | ON | The start-up batch starts the BBS, with the date and time of the EOS clock |
 | 15 | Start with X | OFF | Direct start fits because the BBS uses field-sized strings. Turn this on to switch the EOS cartridge off and give the message/file buffer 8 KB more room. |
 | 16 | Clock source | MANUAL | MANUAL asks at every BBS start; EOS/JIFFY trusts the current volatile clock; APETIME asks an APE-family SIO host; R-TIME 8 uses a persistent hardware/emulated RTC. |
@@ -275,7 +277,10 @@ On the SDX image, RDCONF writes `AUTOEXEC.BAT` instead of the EOS files.
 SpartaDOS X installs its native RAM disk as shell drive `O:`; exBASIC/CIO uses
 the equivalent `DO:` path. `RAMCACHE.CFG` records that destination separately
 for every selected file, so the picker controls whether each module or asset
-loads from RAM (`[R]`) or its configured disk (`[D]`).
+loads from RAM (`[R]`) or its configured disk (`[D]`). The generated batch
+first pauses for five seconds so BREAK can leave the sysop at the SDX prompt.
+When caching is enabled, `FORMAT /QQ O: MUTINREX` prepares O: non-interactively
+before any selected files are copied.
 
 For Altirra, add an **R-Time 8** device to the active machine's device tree,
 select R-TIME 8 in CONFIG item 16, save, and perform a cold reset. Merely
@@ -301,7 +306,7 @@ D1:wfc.com
 ```
 
 Do not start two R: backends in one boot. If the R: handler is already
-resident, use CONFIG item 13 NONE. The direct BBS start works with the EOS
+resident, use CONFIG item 13 EXISTING R: / NONE. The direct BBS start works with the EOS
 cartridge mapped. Prefix the second command with `X ` only when you want the
 larger message/file buffer.
 
@@ -491,7 +496,7 @@ record automatically.
 |---------|------------|
 | `CAN'T READ D1:SYSTEM.MET, ERROR 170` at the start | Run CONFIG and choose I, or check setting 9 (users/callers drive) |
 | `NO D1:BBS.CFG, USING DEFAULTS` | Run CONFIG and save |
-| WFC says `OFFLINE / LOCAL LOGON ONLY` | No R: handler is installed. SELECT starts a local keyboard session; for remote calls select RVRFULL, RVRTWOW or NHAND and cold-restart, or preload an emulator R: and select NONE. |
+| WFC says `OFFLINE / LOCAL LOGON ONLY` | No R: handler is installed. SELECT starts a local keyboard session. On SDX with an Atari 850, select 850 + MODEM; otherwise choose an appropriate R-VERTER + MODEM setup or FUJINET and cold-restart. Use EXISTING R: / NONE only for a preloaded handler or local-only operation. |
 | exOS reports `File D1:NAME.sys 170` | Native EOSFS names are case-sensitive and DEVICE appends lowercase `.sys`. Use the packaged `RVRFULL.sys`, `RVRTWOW.sys` or `NHAND.sys` name exactly |
 | The modem answers but WFC remains at `RING 1` | Use the current `REMMS.COM` and `WFC.COM`. REMMS requires modem result codes; keep `Q0 V1` in CONFIG item 6 so the modem reports `CONNECT` in text form |
 | `ERROR- 2` immediately when loading CONFIG | The disk has an older CONFIG.COM that used a 16 KB rewrite buffer; rebuild with `python tools/build.py` and copy the new program |

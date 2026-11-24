@@ -19,7 +19,6 @@ from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: 
 from altirra_debug import read_memory, read_screen  # noqa: E402
 
 from exos_bbs_test import (  # noqa: E402
-    CASES,
     alt_number,
     atascii_lines,
     labels,
@@ -27,6 +26,12 @@ from exos_bbs_test import (  # noqa: E402
     validate_state,
 )
 import sdfs  # noqa: E402
+
+
+CASES = (
+    ("NONE", 0), ("RHND850", 1), ("RVRFULL", 2),
+    ("RVRTWOW", 3), ("NHAND", 4),
+)
 
 
 def make_case(driver: str, driver_number: int, target: Path) -> None:

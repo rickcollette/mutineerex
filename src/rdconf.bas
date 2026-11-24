@@ -11,7 +11,7 @@ DIM Selected(95) BYTE
 DIM IoBuf(254) BYTE
 DIM Count, Status, K, J, G, Page, Choice, Capacity, Needed, Saved, Code
 DIM ExistingCount, ExistingUsed, FreeSectors, Got, Remain, P, C
-DIM WfcRam, RemmsRam, Rs232Ram, ApeRam, DriverRam, IsSdx
+DIM WfcRam, RemmsRam, Handler850Ram, ApeRam, DriverRam, IsSdx
 DIM In$, S$, T$, F$, Name$, Spec$, Ext$, Drive$
 
 InitSettings()
@@ -419,7 +419,7 @@ FUNC WriteSystem()
 ENDFUNC
 
 FUNC WriteStartup()
-  WfcRam = 0 : RemmsRam = 0 : Rs232Ram = 0 : ApeRam = 0
+  WfcRam = 0 : RemmsRam = 0 : Handler850Ram = 0 : ApeRam = 0
   CLOSE #1
   IF RDriver = 0 AND AutoStart = 0
     XIO 33, #1, 0, 0, "D1:eosauto.bat"
@@ -449,7 +449,7 @@ FUNC WriteStartup()
             PRINT #1; "cp "; F$; " O:"; T$
             IF UCASE$(F$) = "D1:WFC.COM" THEN WfcRam = 1
             IF UCASE$(F$) = "D1:REMMS.COM" THEN RemmsRam = 1
-            IF UCASE$(F$) = "D1:RS232.COM" THEN Rs232Ram = 1
+            IF UCASE$(F$) = "D1:RS232.COM" THEN Handler850Ram = 1
             IF UCASE$(F$) = "D1:APETIME.COM" THEN ApeRam = 1
           ENDIF
         LOOP
@@ -459,7 +459,7 @@ FUNC WriteStartup()
     PRINT #1; "SET PATH=CAR:;O:;D1:"
   ENDIF
   IF RDriver = 1
-    IF Rs232Ram
+    IF Handler850Ram
       PRINT #1; "O:rs232.com"
     ELSE
       PRINT #1; "D1:rs232.com"
@@ -504,7 +504,7 @@ FUNC WriteStartup()
 ENDFUNC
 
 FUNC WriteSdxStartup()
-  WfcRam = 0 : RemmsRam = 0 : Rs232Ram = 0 : ApeRam = 0 : DriverRam = 0
+  WfcRam = 0 : RemmsRam = 0 : Handler850Ram = 0 : ApeRam = 0 : DriverRam = 0
   CLOSE #1
   IF RDriver = 0 AND AutoStart = 0
     XIO 33, #1, 0, 0, "D1:AUTOEXEC.BAT"
@@ -515,7 +515,12 @@ FUNC WriteSdxStartup()
   OPEN #1, 8, 0, "D1:AUTOEXEC.BAT"
   Code = ERR()
   IF Code <> 1 THEN CLOSE #1 : RETURN Code
+  PRINT #1; "ECHO MUTINEER-EX STARTS IN 5 SECONDS"
+  PRINT #1; "ECHO PRESS BREAK FOR THE SDX PROMPT"
+  PRINT #1; "PAUSE 5"
   IF AutoStart AND StartOption(2)
+    ' SDX /QQ prepares O: without the formatter menu or clear-disk prompt.
+    PRINT #1; "FORMAT /QQ O: MUTINREX"
     CLOSE #2
     OPEN #2, 4, 0, "D1:RAMCACHE.CFG"
     Code = ERR()
@@ -536,9 +541,9 @@ FUNC WriteSdxStartup()
             PRINT #1; "COPY "; F$; " O:"; T$
             IF UCASE$(F$) = "D1:WFC.COM" THEN WfcRam = 1
             IF UCASE$(F$) = "D1:REMMS.COM" THEN RemmsRam = 1
-            IF UCASE$(F$) = "D1:RS232.COM" THEN Rs232Ram = 1
+            IF UCASE$(F$) = "D1:RHND850.COM" THEN Handler850Ram = 1
             IF UCASE$(F$) = "D1:APETIME.COM" THEN ApeRam = 1
-            IF RDriver = 1 AND UCASE$(F$) = "D1:RS232.COM" THEN DriverRam = 1
+            IF RDriver = 1 AND UCASE$(F$) = "D1:RHND850.COM" THEN DriverRam = 1
             IF RDriver = 2 AND UCASE$(F$) = "D1:RVRFULL.COM" THEN DriverRam = 1
             IF RDriver = 3 AND UCASE$(F$) = "D1:RVRTWOW.COM" THEN DriverRam = 1
             IF RDriver = 4 AND UCASE$(F$) = "D1:NHAND.COM" THEN DriverRam = 1
@@ -549,7 +554,7 @@ FUNC WriteSdxStartup()
     CLOSE #2
   ENDIF
   T$ = ""
-  IF RDriver = 1 THEN T$ = "RS232.COM"
+  IF RDriver = 1 THEN T$ = "RHND850.COM"
   IF RDriver = 2 THEN T$ = "RVRFULL.COM"
   IF RDriver = 3 THEN T$ = "RVRTWOW.COM"
   IF RDriver = 4 THEN T$ = "NHAND.COM"

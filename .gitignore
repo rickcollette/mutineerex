@@ -3,6 +3,7 @@
 # below can be discovered at any depth.
 *
 !*/
+TVUBBS/
 
 # Repository metadata
 !.gitignore
@@ -26,6 +27,7 @@
 !*.cmd
 !Makefile
 !makefile
+!drivers/RHND850.COM
 
 # Local/generated directories should never be traversed, even if they contain
 # files with an allowed extension.

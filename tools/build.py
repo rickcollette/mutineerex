@@ -11,7 +11,8 @@ Usage:  python tools/build.py [--no-disk]
   build/BJACK.XEX          blackjack game door
   build/SLOTS.XEX          three-reel slot-machine door
   build/REMMS.COM          REMMS 1.10 resident serial/session manager
-  drivers/RS232.COM        legacy Atari 850 post-boot loader
+  drivers/RHND850.COM      Atari 850 resident R: handler
+  drivers/RS232.COM        legacy Atari 850 bootstrap retained for reference
   build/RVRFULL.SYS        full-handshake R-Verter EOS device driver
   build/RVRTWOW.SYS        two-wire R-Verter EOS device driver
   build/NHAND.SYS          FujiNet EOS device driver
@@ -203,6 +204,7 @@ DOOR_CATALOG = ("DOORS.dat", "DOORS.DAT")
 HIGH_SCORE_FILES = [("BJHI10.txt", "BJHI10.TXT"),
                     ("SLOTHI10.txt", "SLOTHI10.TXT")]
 DRIVER_FILES = [
+    ("drivers/RHND850.COM", "rhnd850.com"),
     ("drivers/RS232.COM", "rs232.com"),
     # exOS DEVICE appends lowercase `.sys`; native EOSFS names are case
     # sensitive, so the on-disk extensions must match exactly.

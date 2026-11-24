@@ -36,13 +36,18 @@ def make_case(target: Path, apply: bool = True) -> None:
     files["BBS.CFG"] = atascii_lines(
         "MUTINREX CFG 1", "SYSOP", "0", "1", "5", "15",
         "ATE0 Q0 V1 S2=255 S4=24 S7=15", "1024", "8",
-        "D1:", "D1:", "D1:", "D1:", "4", "1", "0", "1", "1",
+        "D1:", "D1:", "D1:", "D1:", "1", "1", "0", "1", "1",
     )
     if apply:
         files["RAMCACHE.APPLY"] = atascii_lines("1")
     # Transfer batch control once so AUTOEXEC.BAT itself is not held open
     # while RDCONF replaces it, matching a sysop launching CONFIG later.
-    files["BOOTCONF.BAT"] = atascii_lines("D1:RDCONF.COM")
+    # The release image initially has no AUTOEXEC.BAT.  Remove the one-shot
+    # launcher before entering RDCONF so this exercises first-time creation,
+    # not only replacement of an existing startup file.
+    files["BOOTCONF.BAT"] = atascii_lines(
+        "DEL D1:AUTOEXEC.BAT", "D1:RDCONF.COM"
+    )
     files["AUTOEXEC.BAT"] = atascii_lines("-BOOTCONF")
     sdfs.build(str(target), 65535, 256, files,
                volname="MUTINREX", eosfs=False)
@@ -119,9 +124,13 @@ def main() -> int:
     by_name = {name.lower(): entry["data"] for name, entry in entries}
     startup = by_name.get("/autoexec.bat", b"").decode("latin-1", errors="replace").upper()
     expected = (
+        "ECHO MUTINEER-EX STARTS IN 5 SECONDS",
+        "ECHO PRESS BREAK FOR THE SDX PROMPT",
+        "PAUSE 5",
+        "FORMAT /QQ O: MUTINREX",
         "ECHO COPYING D1:WFC.COM -> RAMDISK:WFC.COM",
         "COPY D1:WFC.COM O:WFC.COM",
-        "D1:NHAND.COM",
+        "D1:RHND850.COM",
         "D1:REMMS.COM",
         "O:WFC.COM",
     )
