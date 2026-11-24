@@ -14,6 +14,7 @@ DIM ExistingCount, ExistingUsed, FreeSectors, Got, Remain, P, C
 DIM WfcRam, RemmsRam, Handler850Ram, ApeRam, DriverRam, IsSdx
 DIM In$, S$, T$, F$, Name$, Spec$, Ext$, Drive$
 
+Status = USR(@BIND_RDCONF_STRINGS)
 InitSettings()
 Status = LoadSettings()
 IsSdx = DetectSdx()

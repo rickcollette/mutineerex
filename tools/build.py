@@ -179,6 +179,8 @@ CONFIG_ARRAY_BYTES = 125 + 26 + 26
 CONFIG_HEAP_SAFETY = 1024
 WFC_ARRAY_BYTES = 1 + 1 + 26 + 26 + 13
 WFC_HEAP_RESERVE = 2300
+RDCONF_ARRAY_BYTES = 4608 + 192 + 96 + 255 + 3
+RDCONF_HEAP_SAFETY = 2048
 
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import atascii  # noqa: E402
@@ -192,7 +194,7 @@ PROGRAMS = [
     ("src/doors_module.bas", "build/DOORS.XEX", "doors.com", ["src/fixed_strings.asm"]),
     ("src/door_blackjack.bas", "build/BJACK.XEX", "bjack.com", ["src/fixed_strings.asm"]),
     ("src/door_slots.bas", "build/SLOTS.XEX", "slots.com", ["src/fixed_strings.asm"]),
-    ("src/rdconf.bas", "build/RDCONF.XEX", "rdconf.com", []),
+    ("src/rdconf.bas", "build/RDCONF.XEX", "rdconf.com", ["src/rdconf_strings.asm"]),
     ("src/config.bas", "build/CONFIG.XEX", "config.com", []),
     ("src/init.bas", "build/INIT.XEX", "init.com", []),
 ]
@@ -300,7 +302,7 @@ def compile_program(src, out, modules):
     # Keep debugger symbols/listings for the two programs whose available
     # memory is constrained by the mapped EOS cartridge.  WFC's symbols are
     # also the canonical address map for diagnosing the startup ERROR- 2.
-    if out in ("build/CONFIG.XEX", "build/WFC.XEX"):
+    if out in ("build/CONFIG.XEX", "build/WFC.XEX", "build/RDCONF.XEX"):
         cmd.append("-g")
     cmd += [path(src)] + [path(module) for module in modules]
     print(">", os.path.basename(src))
@@ -379,6 +381,23 @@ def verify_wfc_heap():
           (before_buffer, WFC_HEAP_RESERVE))
 
 
+def verify_rdconf_heap():
+    """Keep RDCONF clear of ERROR-2 with SDX/EOS and handlers resident."""
+    with open(path("build/RDCONF.lbl"), encoding="ascii") as f:
+        labels = f.read()
+    match = re.search(r"^al ([0-9A-Fa-f]{6}) \.EXB_FREE$", labels, re.MULTILINE)
+    if not match:
+        sys.exit("can't find EXB_FREE in build/RDCONF.lbl")
+    free_start = int(match.group(1), 16)
+    available = EOS_CART_MEMTOP + 1 - free_start
+    required = RDCONF_ARRAY_BYTES + RDCONF_HEAP_SAFETY
+    if required > available:
+        sys.exit("RDCONF needs %d heap bytes but a mapped cartridge leaves %d; "
+                 "reduce arrays or linked data" % (required, available))
+    print("  cartridge heap margin after RDCONF arrays: %d bytes" %
+          (available - required))
+
+
 def main():
     audit_branding()
     audit_source_versions()
@@ -388,6 +407,8 @@ def main():
         compile_program(src, out, modules)
         if out == "build/WFC.XEX":
             verify_wfc_heap()
+        if out == "build/RDCONF.XEX":
+            verify_rdconf_heap()
         if out == "build/CONFIG.XEX":
             verify_config_heap()
     if "--no-disk" in sys.argv:

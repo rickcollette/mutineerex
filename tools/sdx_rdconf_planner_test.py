@@ -17,8 +17,29 @@ sys.path.insert(0, str(ROOT / "tools"))
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
 from altirra_debug import read_screen  # noqa: E402
-from exos_bbs_test import screen_to_text  # noqa: E402
+from exos_bbs_test import atascii_lines, screen_to_text  # noqa: E402
 from sdx_rdconf_test import make_case  # noqa: E402
+import sdfs  # noqa: E402
+
+
+def make_resident_case(target: Path) -> None:
+    """Launch RDCONF after the real 850 handler and REMMS are resident."""
+    make_case(target, apply=False)
+    volume = sdfs.Volume(str(target))
+    entries = volume.check()
+    if volume.errors:
+        raise RuntimeError("release ATR is invalid: " + "; ".join(volume.errors))
+    files = {
+        name.lstrip("/"): entry["data"]
+        for name, entry in entries
+        if not entry["status"] & sdfs.ST_DIR
+    }
+    files.pop("BOOTCONF.BAT", None)
+    files["AUTOEXEC.BAT"] = atascii_lines(
+        "D1:RHND850.COM", "D1:REMMS.COM", "D1:RDCONF.COM"
+    )
+    sdfs.build(str(target), 65535, 256, files,
+               volname="MUTINREX", eosfs=False)
 
 
 def main() -> int:
@@ -28,7 +49,7 @@ def main() -> int:
     atr = work / "planner.atr"
     profile = work / "planner.ini"
     log = work / "planner.log"
-    make_case(atr, apply=False)
+    make_resident_case(atr)
     run_altirra_850.write_profile(profile, 7084, inbound=False)
     profile.write_text(
         profile.read_text(encoding="utf-8").replace(
