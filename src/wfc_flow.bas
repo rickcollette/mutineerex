@@ -2,7 +2,7 @@
 
 FUNC InitializeClock()
   IF Year <> 0 THEN RETURN
-  PRINT CHR$(125); "Mutineer-eX 1.0.5 WFC"
+  PRINT CHR$(125); "Mutineer-eX 1.0.6 WFC"
   IF CfgStatus = 170 THEN PRINT "NO "; CfgFile$; " - RUN INIT"
   IF CfgStatus <> 1 AND CfgStatus <> 170 THEN PRINT "INVALID "; CfgFile$; " - RUN INIT"
   St = 0
@@ -25,7 +25,7 @@ FUNC WfcDrawScreen()
   Code = ERR()
   IF Code <> 1
     CLOSE #FileCh
-    PRINT CHR$(125); "Mutineer-eX 1.0.5 / REMMS WFC"
+    PRINT CHR$(125); "Mutineer-eX 1.0.6 / REMMS WFC"
     PRINT "MISSING "; FileName$; " ERROR "; Code
     RETURN
   ENDIF
