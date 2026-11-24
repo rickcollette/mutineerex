@@ -17,7 +17,7 @@ F$ = ""
 GRAPHICS 0
 POKE 82, 1
 CLS
-PRINT "       Mutineer-eX 1.0.7 INIT"
+PRINT "       Mutineer-eX 1.0.8 INIT"
 PRINT "       ----------------------"
 PRINT
 PRINT "THIS CREATES A NEW BOARD ON D1:."
