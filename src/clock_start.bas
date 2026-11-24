@@ -1,6 +1,11 @@
 ' WFC-only clock acquisition after a cold or offline restart.
 
 FUNC AskClock()
+  ' Clock entry is always a local-console operation.  AttachModule restores
+  ' the saved caller route before this function runs; with a configured R:
+  ' handler that route makes E: reads wait on REMMS instead of the keyboard.
+  ' WaitForCall selects host mode again when it opens the modem.
+  IF SerialReady THEN Q1 = RemmsMode(0)
   DO
     PRINT "Enter date mm/dd/yyyy ";
     ' A DOS/RAM-disk launch may leave IOCB #0 closed or redirected.

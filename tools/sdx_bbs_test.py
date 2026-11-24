@@ -34,7 +34,8 @@ CASES = (
 )
 
 
-def make_case(driver: str, driver_number: int, target: Path) -> None:
+def make_case(driver: str, driver_number: int, target: Path,
+              manual_clock: bool = False) -> None:
     version = (ROOT / "VERSION").read_text(encoding="ascii").strip()
     source = ROOT / "disk" / f"mutinrex-sdx-v{version}.atr"
     volume = sdfs.Volume(str(source))
@@ -46,15 +47,20 @@ def make_case(driver: str, driver_number: int, target: Path) -> None:
         for name, entry in entries
         if not entry["status"] & sdfs.ST_DIR
     }
+    clock_source = "0" if manual_clock else "1"
     files["BBS.CFG"] = atascii_lines(
         "MUTINREX CFG 1", "SYSOP", "0", "1", "5", "15",
         "ATE0 Q0 V1 S2=255 S4=24 S7=15", "1024", "8",
         "D1:", "D1:", "D1:", "D1:", str(driver_number),
-        "1", "0", "1", "0",
+        "1", "0", clock_source, "0",
     )
     files["SYSTEM.MET"] = atascii_lines("1", "0", "0")
-    files["BBSDATE.TXT"] = atascii_lines("11/23/2026")
-    files["BBSTIME.TXT"] = atascii_lines("12:00:00")
+    if manual_clock:
+        files.pop("BBSDATE.TXT", None)
+        files.pop("BBSTIME.TXT", None)
+    else:
+        files["BBSDATE.TXT"] = atascii_lines("11/23/2026")
+        files["BBSTIME.TXT"] = atascii_lines("12:00:00")
     startup = []
     if driver != "NONE":
         startup.append(f"D1:{driver}.COM")
@@ -134,6 +140,70 @@ def run_case(driver: str, driver_number: int, work: Path, index: int,
     return failures
 
 
+def run_manual_clock_case(work: Path, index: int,
+                          symbols: dict[str, int]) -> list[str]:
+    """Prove an offline 850 boot reads the clock from the local editor."""
+    failures: list[str] = []
+    atr = work / "rhnd850-manual-clock.atr"
+    profile = work / "rhnd850-manual-clock.ini"
+    debug_log = work / "rhnd850-manual-clock.log"
+    make_case("RHND850", 1, atr, manual_clock=True)
+    run_altirra_850.write_profile(profile, 6990 + index, inbound=False)
+    command = [
+        str(run_altirra_850.ALTIRRA.resolve()),
+        "/portablealt:" + str(profile.resolve()),
+        "/cart", str(SDX_CART.resolve()),
+        "/debug",
+        "/debugcmd", ".logopen " + str(debug_log.resolve()),
+        "/debugcmd", "g",
+        "/disk", str(atr.resolve()),
+    ]
+    proc = None
+    try:
+        proc = run_altirra_850.launch_isolated(
+            command, run_altirra_850.ALTIRRA.parent
+        )
+        deadline = time.monotonic() + 90
+        screen_text = ""
+        while time.monotonic() < deadline:
+            time.sleep(1)
+            proc.debugger_run_break()
+            time.sleep(0.25)
+            _, screen = read_screen(proc)
+            screen_text = "\n".join(
+                screen_to_text(screen[offset:offset + 40])
+                for offset in range(0, len(screen), 40)
+            )
+            if "Enter date mm/dd/yyyy" in screen_text:
+                break
+            if "Illegal instruction hit" in proc.debugger_text():
+                raise RuntimeError("CPU stopped before the manual clock prompt")
+            proc.debugger_run_break()
+        else:
+            raise RuntimeError("manual clock prompt was not reached")
+
+        prompt_count = screen_text.count("Enter date mm/dd/yyyy")
+        if prompt_count != 1:
+            failures.append(
+                f"manual clock prompt appeared {prompt_count} times, expected once"
+            )
+        public = alt_number(proc, symbols, "fb_var_REMMSPUBLIC")
+        mode, route = read_memory(proc, public + 7, 2)
+        if mode != 0 or route != 0:
+            failures.append(
+                f"manual clock used REMMS mode/route {mode}/{route}, expected 0/0"
+            )
+        if run_altirra_850.process_owns_foreground(proc.pid):
+            failures.append("Altirra acquired the interactive foreground")
+        proc.flush_debug_log()
+    except Exception as exc:
+        failures.append(str(exc))
+    finally:
+        if proc is not None:
+            stop_process_tree(proc)
+    return failures
+
+
 def main() -> int:
     run_altirra_850.validate_canonical_runtime()
     required = (
@@ -156,6 +226,12 @@ def main() -> int:
         failures = run_case(driver, driver_number, work, index, symbols)
         print(f"{driver}: {'FAIL' if failures else 'PASS'}")
         all_failures += [f"{driver}: {failure}" for failure in failures]
+    if "RHND850" in selected:
+        failures = run_manual_clock_case(work, len(CASES), symbols)
+        print(f"RHND850-MANUAL-CLOCK: {'FAIL' if failures else 'PASS'}")
+        all_failures += [
+            f"RHND850-MANUAL-CLOCK: {failure}" for failure in failures
+        ]
     for failure in all_failures:
         print(failure)
     return 1 if all_failures else 0
