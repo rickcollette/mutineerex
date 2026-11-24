@@ -1,6 +1,6 @@
        ***** SYSTEM BULLETIN *****
 
-Mutineer-eX 1.0.6 is ready for calls.
+Mutineer-eX 1.0.7 is ready for calls.
 
 This board provides message areas,
 file areas, caller information, and
