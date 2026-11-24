@@ -110,6 +110,59 @@ def audit_source_versions():
                  (VERSION, "\n  ".join(failures)))
 
 
+def audit_explicit_console_input():
+    """Reject inherited-console reads outside GRAPHICS-owned admin tools."""
+    failures = []
+    pattern = re.compile(r"\b(?:INPUT|GET)\b(?!\s*#)", re.IGNORECASE)
+
+    def basic_code(line):
+        """Remove quoted strings and apostrophe comments from one BASIC line."""
+        code = []
+        quoted = False
+        for char in line:
+            if char == "'" and not quoted:
+                break
+            if char == '"':
+                quoted = not quoted
+                code.append(" ")
+            elif quoted:
+                code.append(" ")
+            else:
+                code.append(char)
+        return "".join(code)
+
+    graphics_console_sources = {
+        "config.bas", "config_common.bas", "config_files.bas",
+        "config_general.bas", "config_messages.bas", "config_users.bas",
+        "init.bas", "rdconf.bas",
+    }
+    for entrypoint in ("config.bas", "init.bas", "rdconf.bas"):
+        with open(path("src/" + entrypoint), encoding="ascii") as f:
+            lines = list(f)
+        graphics_line = next(
+            (number for number, line in enumerate(lines, 1)
+             if "GRAPHICS 0" in basic_code(line).upper()), None)
+        input_line = next(
+            (number for number, line in enumerate(lines, 1)
+             if pattern.search(basic_code(line))), None)
+        if graphics_line is None or (input_line is not None and
+                                     graphics_line > input_line):
+            failures.append("src/%s does not initialize IOCB #0 before input" %
+                            entrypoint)
+    for name in sorted(os.listdir(path("src"))):
+        if not name.lower().endswith(".bas"):
+            continue
+        filename = path("src/" + name)
+        with open(filename, encoding="ascii") as f:
+            for line_number, line in enumerate(f, 1):
+                if (pattern.search(basic_code(line)) and
+                        name.lower() not in graphics_console_sources):
+                    failures.append("src/%s:%d" % (name, line_number))
+    if failures:
+        sys.exit("console INPUT/GET depends on an inherited IOCB:\n  " +
+                 "\n  ".join(failures))
+
+
 def audit_branding():
     """Reject retired branding in maintained source and packaged screens."""
     ignored_dirs = {".git", "build", "disk", "listings", "original", "tmp"}
@@ -401,6 +454,7 @@ def verify_rdconf_heap():
 def main():
     audit_branding()
     audit_source_versions()
+    audit_explicit_console_input()
     os.makedirs(path("build"), exist_ok=True)
     compile_remms()
     for src, out, _, modules in PROGRAMS:

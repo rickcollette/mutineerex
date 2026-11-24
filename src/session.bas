@@ -5,6 +5,9 @@
 ' Asks the date and time, reads SYSTEM.MET and opens the keyboard and
 ' log printer.
 FUNC Init()
+  CLOSE #ModemCh
+  OPEN #ModemCh, 12, 0, "E:"
+  IF ERR() <> 1 THEN PRINT "CAN'T OPEN CONSOLE" : END
   PRINT CHR$(125); "B.B.S."
   IF CfgStatus = 170 THEN PRINT "NO "; CfgFile$; " - RUN INIT"
   IF CfgStatus <> 1 AND CfgStatus <> 170 THEN PRINT "INVALID "; CfgFile$; " - RUN INIT"
@@ -42,7 +45,7 @@ ENDFUNC
 FUNC AskClock()
   DO
     PRINT "Enter date mm/dd/yyyy ";
-    INPUT S$
+    INPUT #ModemCh, S$
     Month = VAL(S$[1, 2])
     Day = VAL(S$[4, 2])
     Year = VAL(S$[9, 2])
@@ -50,7 +53,7 @@ FUNC AskClock()
   LOOP
   DO
     PRINT "Enter time hh:mm:ss ";
-    INPUT S$
+    INPUT #ModemCh, S$
     Hour = VAL(S$[1, 2])
     Minute = VAL(S$[4, 2])
     Second = VAL(S$[7, 2])

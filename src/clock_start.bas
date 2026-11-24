@@ -3,7 +3,10 @@
 FUNC AskClock()
   DO
     PRINT "Enter date mm/dd/yyyy ";
-    INPUT S$
+    ' A DOS/RAM-disk launch may leave IOCB #0 closed or redirected.
+    ' AttachModule always opens ModemCh on E:, so use that explicit editor
+    ' channel instead of relying on the inherited console.
+    INPUT #ModemCh, S$
     Month = VAL(S$[1, 2])
     Day = VAL(S$[4, 2])
     Year = VAL(S$[9, 2])
@@ -11,7 +14,7 @@ FUNC AskClock()
   LOOP
   DO
     PRINT "Enter time hh:mm:ss ";
-    INPUT S$
+    INPUT #ModemCh, S$
     Hour = VAL(S$[1, 2])
     Minute = VAL(S$[4, 2])
     Second = VAL(S$[7, 2])
