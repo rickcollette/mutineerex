@@ -164,15 +164,11 @@ ENDFUNC
 
 FUNC AddDirectoryLine(Path$)
   LOCAL N
-  IF IsSdx
-    IF LEN(S$) < 41 OR S$[36, 1] <> ":" THEN RETURN
-    Ext$ = UCASE$(S$[10, 3])
-  ELSE
-    Ext$ = UCASE$(S$[11, 3])
-  ENDIF
+  IF LEN(S$) < 17 THEN RETURN
+  Ext$ = UCASE$(S$[11, 3])
   IF ExtensionGroup(Ext$) < 0 OR Count > 95 THEN RETURN
   Name$ = ""
-  IF IsSdx THEN P = 1 ELSE P = 3
+  P = 3
   FOR J = P TO P + 7
     C = PEEK(ADR(S$) + J)
     IF C <> 32 THEN Name$ =+ CHR$(C)
@@ -180,7 +176,7 @@ FUNC AddDirectoryLine(Path$)
   Name$ =+ "." : Name$ =+ Ext$
   Spec$ = Path$ : Spec$ =+ Name$
   IF LEN(Spec$) > 47 OR FindSpec(Spec$) >= 0 THEN RETURN
-  IF IsSdx THEN N = CountFileSectors(Spec$) ELSE N = VAL(S$[15, 3])
+  N = VAL(S$[15, 3])
   IF N >= 999 THEN N = CountFileSectors(Spec$)
   MOVE ADR(Spec$), ADR(FileSpecs) + Count * 48, LEN(Spec$) + 1
   FileSectors(Count) = N
@@ -233,12 +229,12 @@ ENDFUNC
 
 FUNC ParseDirectoryName()
   Name$ = ""
-  IF IsSdx THEN P = 1 ELSE P = 3
+  P = 3
   FOR J = P TO P + 7
     C = PEEK(ADR(S$) + J)
     IF C <> 32 THEN Name$ =+ CHR$(C)
   NEXT J
-  IF IsSdx THEN T$ = S$[10, 3] ELSE T$ = S$[11, 3]
+  T$ = S$[11, 3]
   IF T$ <> "   "
     Name$ =+ "."
     FOR J = 1 TO 3
@@ -264,13 +260,7 @@ FUNC ReadRamCapacity()
       FreeSectors = VAL(S$)
       EXIT
     ENDIF
-    IF IsSdx AND LEN(S$) >= 41 AND S$[36, 1] = ":"
-      ParseDirectoryName()
-      Spec$ = "DO:" : Spec$ =+ Name$
-      K = CountFileSectors(Spec$)
-      ExistingUsed = ExistingUsed + K + 1
-      INC ExistingCount
-    ELIF NOT IsSdx AND LEN(S$) >= 17 AND PEEK(ADR(S$) + 2) <> 58
+    IF LEN(S$) >= 17 AND PEEK(ADR(S$) + 2) <> 58
       ParseDirectoryName()
       Spec$ = "DO:" : Spec$ =+ Name$
       K = VAL(S$[15, 3])

@@ -77,6 +77,11 @@ def main() -> int:
         for extension in ("COM", "ATA", "TXT", "V52", "RIP", "IG"):
             if "ALL ." + extension + " FILES" not in screen_text:
                 failures.append(f".{extension} group was not displayed")
+        for number, extension in ((1, "COM"), (2, "ATA"), (3, "TXT")):
+            if f"{number} [NONE] ALL .{extension} FILES" in screen_text:
+                failures.append(f".{extension} files were not discovered and selected")
+        if "SELECTED    0 SECTORS" in screen_text:
+            failures.append("RDCONF discovered no files")
     except Exception as exc:
         failures.append(str(exc))
     finally:
