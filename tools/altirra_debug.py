@@ -15,7 +15,7 @@ def _stopped(proc) -> bool:
     )
 
 
-def halt_execution(proc, attempts: int = 3, timeout: float = 3.0) -> None:
+def halt_execution(proc, attempts: int = 5, timeout: float = 5.0) -> None:
     """Halt Altirra and verify that the asynchronous F8 command landed."""
     if _stopped(proc):
         return

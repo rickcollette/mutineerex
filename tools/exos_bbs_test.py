@@ -22,7 +22,6 @@ sys.path.insert(0, str(MUTINEER / "tools"))
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
 from altirra_debug import (  # noqa: E402
-    halt_execution,
     read_memory as alt_read_memory,
     read_screen as alt_read_screen,
 )
@@ -38,6 +37,12 @@ def labels(path: Path) -> dict[str, int]:
     result: dict[str, int] = {}
     for line in path.read_text(encoding="ascii", errors="replace").splitlines():
         match = re.match(r"^al\s+([0-9A-Fa-f]{6})\s+\.([^\s]+)$", line)
+        if match:
+            result[match.group(2)] = int(match.group(1), 16)
+            continue
+        match = re.match(
+            r"^\S+\s+([0-9A-Fa-f]{4})\s+([A-Za-z_][A-Za-z0-9_]*)$", line
+        )
         if match:
             result[match.group(2)] = int(match.group(1), 16)
     return result
@@ -192,6 +197,8 @@ def run_driver_case(driver: str, driver_number: int, work: Path, index: int,
     atr = work / f"{driver.lower()}.atr"
     profile = work / f"{driver.lower()}.ini"
     debug_log = work / f"{driver.lower()}.log"
+    remms_symbols = labels(ROOT / "build" / "REMMS.lab")
+    console_ready = remms_symbols["REMMS_CONSOLE_READY"]
     make_case(driver, driver_number, atr)
     run_altirra_850.write_profile(profile, 6890 + index, inbound=False)
     command = [
@@ -202,30 +209,20 @@ def run_driver_case(driver: str, driver_number: int, work: Path, index: int,
         "/debugcmd", ".logopen " + str(debug_log.resolve()),
         "/debugcmd", ".loadsym " + str((ROOT / "build" / "REMMS.lst").resolve()),
         "/debugcmd", ".loadsym " + str((ROOT / "build" / "REMMS.lab").resolve()),
+        "/debugcmd", f"bp ${console_ready:04X}",
         "/debugcmd", "g",
         "/disk", str(atr.resolve()),
     ]
     proc = None
     try:
         proc = run_altirra_850.launch_isolated(command, run_altirra_850.ALTIRRA.parent)
-        deadline = time.monotonic() + 120
-        while time.monotonic() < deadline:
+        if not proc.wait_for_debugger_text("Breakpoint 0 set", 10):
+            raise RuntimeError("WFC console breakpoint was not armed")
+        if not proc.wait_for_debugger_text(f"{console_ready:04X}:", 120):
             debugger = proc.debugger_text()
-            if driver == "NONE":
-                ready = "REMMS WFC console ready" in debugger
-            else:
-                ready = ("REMMS fresh modem sync begin" in debugger or
-                         "REMMS open failure" in debugger)
-            if ready:
-                break
-            if "Illegal instruction hit" in debugger:
-                tail = " | ".join(debugger.splitlines()[-20:])
-                raise RuntimeError("CPU stopped before WFC: " + tail)
-            time.sleep(0.1)
-        else:
-            tail = " | ".join(proc.debugger_text().splitlines()[-20:])
-            raise RuntimeError("WFC did not reach its ready state: " + tail)
-        halt_execution(proc)
+            tail = " | ".join(debugger.splitlines()[-20:])
+            raise RuntimeError("WFC did not reach its console loop: " + tail)
+        time.sleep(0.25)
         _, screen = alt_read_screen(proc)
         screen_text = "\n".join(
             screen_to_text(screen[offset:offset + 40])
