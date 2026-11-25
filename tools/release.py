@@ -21,6 +21,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -280,6 +281,88 @@ def prepare_release_commit(version: str, dry_run: bool) -> str:
     return output(["git", "rev-parse", "HEAD"])
 
 
+def show_captured(result: subprocess.CompletedProcess[str]) -> None:
+    """Print captured gh output without losing the original diagnostic."""
+    if result.stdout:
+        print(result.stdout.rstrip())
+    if result.stderr:
+        print(result.stderr.rstrip(), file=sys.stderr)
+
+
+def release_exists(repo: str, tag: str) -> bool:
+    result = run(
+        ["gh", "release", "view", tag, "--repo", repo, "--json", "url"],
+        capture=True, check=False,
+    )
+    return result.returncode == 0
+
+
+def upload_release_assets(repo: str, tag: str,
+                          assets: tuple[Path, ...]) -> None:
+    run([
+        "gh", "release", "upload", tag,
+        *(str(asset) for asset in assets),
+        "--repo", repo, "--clobber",
+    ])
+
+
+def verify_release_assets(repo: str, tag: str,
+                          assets: tuple[Path, ...]) -> None:
+    expected = {asset.name for asset in assets}
+    published = set(output([
+        "gh", "release", "view", tag, "--repo", repo,
+        "--json", "assets", "--jq", ".assets[].name",
+    ]).splitlines())
+    missing = expected - published
+    if missing:
+        # A release API request can succeed before every asset upload does.
+        # Repair only the missing files, then require an exact second read.
+        upload_release_assets(
+            repo, tag, tuple(asset for asset in assets if asset.name in missing)
+        )
+        published = set(output([
+            "gh", "release", "view", tag, "--repo", repo,
+            "--json", "assets", "--jq", ".assets[].name",
+        ]).splitlines())
+        missing = expected - published
+    if missing:
+        raise ReleaseError(
+            "GitHub release is missing assets: " + ", ".join(sorted(missing))
+        )
+
+
+def create_release(repo: str, tag: str, command: list[str],
+                   assets: tuple[Path, ...]) -> None:
+    transient_markers = (
+        "http 500", "http 502", "http 503", "http 504",
+        "timeout", "timed out", "connection reset", "temporarily unavailable",
+        "already exists", "already_exists",
+    )
+    attempts = 3
+    for attempt in range(1, attempts + 1):
+        result = run(command, capture=True, check=False)
+        show_captured(result)
+        if result.returncode == 0:
+            break
+        # GitHub may create the release and then fail while returning its
+        # response or uploading an asset. Complete that partial release.
+        if release_exists(repo, tag):
+            upload_release_assets(repo, tag, assets)
+            break
+        detail = (result.stderr or result.stdout or "").strip()
+        if (attempt == attempts or
+                not any(marker in detail.lower() for marker in transient_markers)):
+            raise ReleaseError(
+                "gh release create failed with exit code %d%s" %
+                (result.returncode, ": " + detail if detail else "")
+            )
+        delay = 2 ** attempt
+        print("Transient GitHub release error; retrying in %d seconds (%d/%d)" %
+              (delay, attempt + 1, attempts), flush=True)
+        time.sleep(delay)
+    verify_release_assets(repo, tag, assets)
+
+
 def publish(args: argparse.Namespace, version: str, branch: str,
             expected_head: str, repo: str, local_tag_exists: bool,
             assets: tuple[Path, ...]) -> None:
@@ -325,7 +408,7 @@ def publish(args: argparse.Namespace, version: str, branch: str,
     if not local_tag_exists:
         run(tag_command)
     run(push_command)
-    run(release_command)
+    create_release(repo, tag, release_command, assets)
     url = output([
         "gh", "release", "view", tag, "--repo", repo,
         "--json", "url", "--jq", ".url",
