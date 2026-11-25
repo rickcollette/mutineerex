@@ -136,6 +136,7 @@ def audit_explicit_console_input():
     graphics_console_sources = {
         "config.bas", "config_common.bas", "config_files.bas",
         "config_general.bas", "config_messages.bas", "config_users.bas",
+        "config_areas.bas",
         "init.bas", "rdconf.bas",
     }
     for entrypoint in ("config.bas", "init.bas", "rdconf.bas"):
@@ -230,11 +231,14 @@ def audit_packaged_branding(atr, expect_eos):
 # enough heap for every compiler string, its small fixed arrays and some
 # runtime headroom; otherwise it exits with ERROR- 2 before showing a menu.
 EOS_CART_MEMTOP = 0x9C1F
-CONFIG_ARRAY_BYTES = 125 + 26 + 26
+CONFIG_ARRAY_BYTES = 125 + 125 + 26 + 26 + 26
 CONFIG_HEAP_SAFETY = 1024
+# 31 strings have linked fixed buffers. Two additional compiler string
+# slots are borrowed function parameters and never own 256-byte storage.
+CONFIG_FIXED_STRINGS = 44
 WFC_ARRAY_BYTES = 1 + 1 + 26 + 26 + 13
 WFC_HEAP_RESERVE = 2300
-RDCONF_ARRAY_BYTES = 4608 + 192 + 96 + 255 + 3
+RDCONF_ARRAY_BYTES = 4608 + 186 + 192 + 96 + 255 + 3
 RDCONF_HEAP_SAFETY = 2048
 
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -242,15 +246,15 @@ import atascii  # noqa: E402
 import sdfs  # noqa: E402
 
 PROGRAMS = [
-    ("src/wfc.bas", "build/WFC.XEX", "wfc.com", ["src/fixed_strings.asm"]),
+    ("src/wfc.bas", "build/WFC.XEX", "wfc.com", ["src/fixed_strings.asm", "src/fixed_area_strings.asm"]),
     ("src/mainbbs.bas", "build/MAINBBS.XEX", "mainbbs.com", ["src/fixed_strings.asm"]),
-    ("src/message_module.bas", "build/MESSAGE.XEX", "message.com", ["src/fixed_strings.asm"]),
-    ("src/files_module.bas", "build/FILES.XEX", "files.com", ["src/fixed_strings.asm"]),
+    ("src/message_module.bas", "build/MESSAGE.XEX", "message.com", ["src/fixed_strings.asm", "src/fixed_area_strings.asm"]),
+    ("src/files_module.bas", "build/FILES.XEX", "files.com", ["src/fixed_strings.asm", "src/fixed_area_strings.asm"]),
     ("src/doors_module.bas", "build/DOORS.XEX", "doors.com", ["src/fixed_strings.asm"]),
     ("src/door_blackjack.bas", "build/BJACK.XEX", "bjack.com", ["src/fixed_strings.asm"]),
     ("src/door_slots.bas", "build/SLOTS.XEX", "slots.com", ["src/fixed_strings.asm"]),
     ("src/rdconf.bas", "build/RDCONF.XEX", "rdconf.com", ["src/rdconf_strings.asm"]),
-    ("src/config.bas", "build/CONFIG.XEX", "config.com", []),
+    ("src/config.bas", "build/CONFIG.XEX", "config.com", ["src/config_strings.asm"]),
     ("src/init.bas", "build/INIT.XEX", "init.com", []),
 ]
 SCREENS = ["WFC", "WELC", "BULL", "FUNC", "HELP", "MESGM", "FILEM",
@@ -354,6 +358,11 @@ def compile_program(src, out, modules):
         # candidate table plus directory strings.  Bytecode leaves about
         # 1.3 KB more runtime heap than the optimizer's mixed native image.
         cmd.append("-no-native")
+    if src == "src/config.bas":
+        # Area migration adds several disk-copy paths to CONFIG. Bytecode
+        # keeps the EOS-cartridge heap margin while fixed buffers hold the
+        # known-size global strings.
+        cmd.append("-no-native")
     # Keep debugger symbols/listings for the two programs whose available
     # memory is constrained by the mapped EOS cartridge.  WFC's symbols are
     # also the canonical address map for diagnosing the startup ERROR- 2.
@@ -398,6 +407,31 @@ def compile_remms():
     assemble("RESOURCES/REMMS/td/tdape.asm", "build/TDAPE.COM")
 
 
+def verify_remms_locator():
+    """Keep discovery inside resident RAM and below the module load address."""
+    labels = {}
+    with open(path("build/REMMS.lab"), encoding="ascii") as source:
+        for line in source:
+            match = re.match(
+                r"^\S+\s+([0-9A-Fa-f]{4})\s+([A-Za-z_][A-Za-z0-9_]*)$",
+                line.strip(),
+            )
+            if match:
+                labels[match.group(2).upper()] = int(match.group(1), 16)
+    required = ("REMMS_LOCATOR", "REMMS_END")
+    missing = [name for name in required if name not in labels]
+    if missing:
+        sys.exit("REMMS listing lacks " + ", ".join(missing))
+    locator = labels["REMMS_LOCATOR"]
+    resident_end = labels["REMMS_END"]
+    if locator != 0x3EB0 or resident_end != locator + 16:
+        sys.exit("REMMS resident locator moved or has the wrong size")
+    if resident_end > 0x4000:
+        sys.exit("REMMS resident locator overlaps the $4000 module region")
+    print("  resident locator: $%04X-$%04X; module gap: %d bytes" %
+          (locator, resident_end - 1, 0x4000 - resident_end))
+
+
 def verify_config_heap():
     """Reject CONFIG builds that cannot run while EOS.car is mapped."""
     with open(path("build/CONFIG.lbl"), encoding="ascii") as f:
@@ -409,7 +443,10 @@ def verify_config_heap():
 
     with open(path("build/CONFIG.lst"), encoding="utf-8") as f:
         string_count = sum("; string variable" in line for line in f)
-    required = string_count * 256 + CONFIG_ARRAY_BYTES + CONFIG_HEAP_SAFETY
+    dynamic_strings = string_count - CONFIG_FIXED_STRINGS
+    if dynamic_strings < 0:
+        sys.exit("CONFIG fixed-string count exceeds compiler string table")
+    required = dynamic_strings * 256 + CONFIG_ARRAY_BYTES + CONFIG_HEAP_SAFETY
     available = EOS_CART_MEMTOP + 1 - free_start
     if required > available:
         sys.exit("CONFIG needs %d heap bytes but EOS.car leaves %d; "
@@ -466,6 +503,7 @@ def main():
     audit_explicit_console_input()
     os.makedirs(path("build"), exist_ok=True)
     compile_remms()
+    verify_remms_locator()
     for src, out, _, modules in PROGRAMS:
         compile_program(src, out, modules)
         if out == "build/WFC.XEX":

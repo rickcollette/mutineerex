@@ -14,6 +14,7 @@ import sdx_telnet_test as test  # noqa: E402
 
 test.CALLER_NAME = "SDXR"
 test.USE_RAMDISK = True
+test.POISON_PAGE3_ON_MAIN_LOAD = True
 
 
 if __name__ == "__main__":

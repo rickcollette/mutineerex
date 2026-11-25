@@ -5,7 +5,6 @@
 remms_boot_install
         cld
         jsr remms_raise_memlo
-        jsr remms_publish_discovery
         jsr remms_cache_install
         jsr remms_session_init
 remms_boot_install_done
@@ -15,7 +14,6 @@ remms_boot_install_done
 remms_install
         lda remms_installed
         beq remms_install_cold
-        jsr remms_publish_discovery
         jsr remms_refresh_handlers
         bcs remms_install_no_handler
         jsr remms_write_handlers
@@ -26,7 +24,6 @@ remms_install
         rts
 remms_install_cold
         jsr remms_raise_memlo
-        jsr remms_publish_discovery
         lda #'E'
         jsr remms_find_handler
         bcs remms_install_no_handler
@@ -117,25 +114,6 @@ remms_set_memlo
         sta MEMLO+1
 remms_memlo_done
         rts
-
-; Byte +3 ($03EB, OS CARTCK) belongs to the 850 R: handler at runtime, so
-; REMMS never writes it; the version lives in the public block (+5/+6).
-remms_publish_discovery
-        ldx #15
-remms_publish_discovery_loop
-        cpx #3
-        beq remms_publish_discovery_next
-        lda remms_discovery_image,x
-        sta REMMS_DISCOVERY,x
-remms_publish_discovery_next
-        dex
-        bpl remms_publish_discovery_loop
-        rts
-remms_discovery_image
-        dta c'REM',b(0)
-        dta a(remms_api),a(remms_public_block),a(REMMS_END)
-        dta a(remms_session_block),a(remms_xfer_native_table)
-        dta a(remms_session_block+REMMS_XFR_BASE)
 
 remms_session_init
         lda #0

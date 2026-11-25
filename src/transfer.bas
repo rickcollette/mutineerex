@@ -11,7 +11,7 @@
 FUNC AskFileName()
   BFlag = 0
   Dir = 0
-  FileName$ = FileDrive$
+  FileName$ = ""
   PRINT #ModemCh; "RETURN=Exit, File NAME.CTL >";
   GLine()
   IF L$ = "" THEN RETURN
@@ -50,6 +50,12 @@ FUNC AskFileName()
     PRINT #ModemCh; "NO ACCESS TO THAT FILE LEVEL"
     RETURN
   ENDIF
+  Q2 = FileStorageArea(L$)
+  IF Q2 < 0 OR ResolveFileArea(Q2) <> 1
+    PRINT #ModemCh; "FILE AREA CONFIGURATION ERROR"
+    RETURN
+  ENDIF
+  FileName$ = AreaPath$
   FileName$ =+ L$
   BFlag = 1
   IF Q6 = 2 THEN RETURN
@@ -335,11 +341,13 @@ FUNC Upload()
     PRINT #ModemCh; "LEVEL 8 FILE MODERATOR REQUIRED"
     RETURN
   ENDIF
-  ' Show the free space of the disk
+  Q6 = 1
+  AskFileName()
+  IF NOT BFlag THEN RETURN
+  ' Show free space for the selected file's actual destination area.
   CloseModem()
   CLOSE #FileCh
-  S$ = FileDrive$
-  S$ =+ "*.XXX"
+  S$ = AreaPath$ : S$ =+ "*.XXX"
   OPEN #FileCh, 6, 0, S$
   S$ = ""
   DO
@@ -350,9 +358,6 @@ FUNC Upload()
   OpenModem()
   PRINT #ModemCh; S$
   PRINT #ModemCh,
-  Q6 = 1
-  AskFileName()
-  IF NOT BFlag THEN RETURN
   IF LocalMode THEN Dir = 0
   CloseModem()
   GetTime()

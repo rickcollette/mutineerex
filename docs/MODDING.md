@@ -19,7 +19,8 @@ BASIC. `C-differences.md` is the most useful chapter for this program.
 The WFC and CONFIG builds check their heap against the memory left while
 `EOS.car` is mapped. A build that would fail at startup with `ERROR- 2` is
 rejected. The file and user editors stream rewrites through
-`FILES.TMP` and `USERS.TMP`; do not replace that with a whole-file array,
+`FILES.TMP` and `USERS.TMP`; area payloads use 125-byte copy/verify buffers.
+Do not replace those with a whole-file array,
 because the cartridge leaves too little main RAM for it.
 
 The compiler is called as:
@@ -86,6 +87,8 @@ src/config.bas     CONFIG.COM main administration menu
 src/config_*.bas   general, message-base, file-area and user managers
 src/init.bas       INIT.COM one-time default board creation
 lib/settings.bas   the settings and BBS.CFG, shared by both programs
+lib/areas.bas      validating/writing AREAS.CFG for offline tools
+lib/areas_runtime.bas compact read-only resolver for live modules/RDCONF
 ```
 
 `main.bas` includes the others at its end. The order matters for
@@ -136,6 +139,9 @@ commands with `GOTO MAIN`; here they just `RETURN`.
 | #2 `ModemCh` | R: (or E: in local mode) |
 | #3 `KbdCh` | K:, the sysop keyboard |
 | #4 `LogCh` | P:, the log printer, open all the time |
+| #5 | CONFIG directory scans or the runtime `FILES.DAT` catalog |
+| #6 | `AREAS.CFG`/`AREAS.BAK` validation and lookup |
+| #7 | CONFIG's atomic `AREAS.NEW` writer |
 
 ### The modem rules
 

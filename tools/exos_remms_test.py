@@ -75,14 +75,20 @@ def run_case(driver: str, work: Path, index: int) -> list[str]:
         if not proc.wait_for_debugger_text(f"{break_after_install:04X}:", 90):
             raise RuntimeError("REMMS post-install breakpoint was not reached")
         time.sleep(0.5)
-        discovery = read_memory(proc, 0x03E8, 14)
-        session = discovery[10] | discovery[11] << 8
+        locator = read_memory(proc, symbols["REMMS_LOCATOR"], 16)
+        api = locator[8] | locator[9] << 8
+        public = locator[10] | locator[11] << 8
+        session = locator[12] | locator[13] << 8
+        resident_end = locator[14] | locator[15] << 8
         memlo = read_memory(proc, 0x02E7, 2)
         hatabs = read_memory(proc, 0x031A, 36)
         rslots = [i for i in range(0, 36, 3) if hatabs[i] == ord("R")]
-        public = discovery[6] | discovery[7] << 8
-        if discovery[:3] != b"REM":
-            failures.append(f"bad discovery record {discovery[:4]!r}")
+        if locator[:8] != b"RLOC\x01\x01\x0A\x09":
+            failures.append(f"bad resident locator {locator[:8]!r}")
+        if api != symbols["REMMS_API"]:
+            failures.append(f"locator API was ${api:04X}")
+        if resident_end != expected_memlo:
+            failures.append(f"locator end was ${resident_end:04X}")
         if public == 0 or read_memory(proc, public, 7) != b"REMMS\x01\x0A":
             failures.append("REMMS 1.10 public block was not published")
         if session == 0 or read_memory(proc, session, 2) != bytes((77, 9)):

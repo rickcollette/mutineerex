@@ -181,7 +181,9 @@ ENDFUNC
 ' Rewrites FILES.DAT after a moderator uploads or deletes FileName$.
 ' Q6 is true for deletion; otherwise BaseDesc$ is stored.
 FUNC UpdateFileCatalog()
-  S$ = FileName$[LEN(FileDrive$) + 1]
+  AreaLine$ = FileName$
+  AreaBasename()
+  S$ = AreaLine$
   CloseModem()
   CLOSE #FileCh
   L$ = FileDrive$
@@ -218,7 +220,13 @@ ENDFUNC
 FUNC ListFiles()
   CloseModem()
   CLOSE #FileCh
-  S$ = FileDrive$
+  Q1 = ResolveFileArea(FileCategory)
+  IF Q1 <> 1
+    OpenModem()
+    PRINT #ModemCh; "CONFIGURATION ERROR "; AreaError
+    RETURN
+  ENDIF
+  S$ = AreaPath$
   S$ =+ "*.???"
   OPEN #FileCh, 6, 0, S$
   BufLen = 0
@@ -240,7 +248,7 @@ FUNC ListFiles()
       Q1 = PEEK(ADR(S$) + 11)
       Q2 = PEEK(ADR(S$) + 12)
       Q3 = PEEK(ADR(S$) + 13) - 48
-      IF (Q1 = 71 OR Q1 = 65 OR Q1 = 84 OR Q1 = 82 OR Q1 = 85) AND (Q2 = 67 OR Q2 = 69 OR Q2 = 88 OR Q2 = 66 OR Q2 = 84 OR Q2 = 85) AND Q3 >= 1 AND Q3 <= UserLevel AND ((FileCategory = 0 AND Q2 = 84) OR (FileCategory = 1 AND Q1 = 71) OR (FileCategory = 2 AND Q1 = 65) OR (FileCategory = 3 AND Q1 = 84) OR (FileCategory = 4 AND Q1 = 82) OR (FileCategory = 5 AND Q1 = 85))
+      IF (Q1 = 71 OR Q1 = 65 OR Q1 = 84 OR Q1 = 82 OR Q1 = 85) AND (Q2 = 67 OR Q2 = 69 OR Q2 = 88 OR Q2 = 66 OR Q2 = 84 OR Q2 = 85) AND Q3 >= 1 AND Q3 <= UserLevel
         Q6 = Q1
         FileName$ = ""
         FOR Q4 = 3 TO 10
@@ -248,9 +256,11 @@ FUNC ListFiles()
         NEXT Q4
         FileName$ =+ "."
         FileName$ =+ S$[11, 3]
-        FindFileDescription()
-        AddFileRow()
-        INC BFlag
+        IF FileStorageArea(FileName$) = FileCategory
+          FindFileDescription()
+          AddFileRow()
+          INC BFlag
+        ENDIF
       ENDIF
     ENDIF
   LOOP

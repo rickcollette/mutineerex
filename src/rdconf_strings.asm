@@ -13,6 +13,8 @@
         .import fb_str_CFGFILE, fb_str_CFGTAG
         .import fb_str_IN, fb_str_S, fb_str_T, fb_str_F
         .import fb_str_NAME, fb_str_SPEC, fb_str_EXT, fb_str_DRIVE
+        .import fb_str_AREAPATH, fb_str_AREALINE
+        .import fb_var_017_NORMALIZEAREAPATH_0T
 
 .macro bind var, buffer
         lda     #<buffer
@@ -41,6 +43,9 @@
         bind fb_str_SPEC,       buf_spec
         bind fb_str_EXT,        buf_ext
         bind fb_str_DRIVE,      buf_drive
+        bind fb_str_AREAPATH,   buf_areapath
+        bind fb_str_AREALINE,   buf_arealine
+        bind fb_var_017_NORMALIZEAREAPATH_0T, buf_normalized
         ldx     #0
         rts
 .endproc
@@ -65,3 +70,6 @@ buf_name:       .res 13         ; 8.3 name
 buf_spec:       .res 49         ; source path
 buf_ext:        .res 4          ; three-character extension
 buf_drive:      .res 49         ; cache target path
+buf_areapath:   .res 31         ; configured storage folder
+buf_arealine:   .res 81         ; registry record
+buf_normalized: .res 31         ; canonicalized area path

@@ -3,15 +3,18 @@
 ' ====================================================================
 
 INCLUDE "settings.bas"
+INCLUDE "areas_runtime.bas"
 
 ' 96 flat 8.3 candidates, each stored as a compact 48-byte string record.
 DIM FileSpecs(4607) BYTE
+DIM AreaRoots(185) BYTE
 DIM FileSectors(95) WORD
 DIM Selected(95) BYTE
 DIM IoBuf(254) BYTE
 DIM Count, Status, K, J, G, Page, Choice, Capacity, Needed, Saved, Code
 DIM ExistingCount, ExistingUsed, FreeSectors, Got, Remain, P, C
 DIM WfcRam, RemmsRam, Handler850Ram, ApeRam, DriverRam, IsSdx
+DIM AreaRootCount
 DIM In$, S$, T$, F$, Name$, Spec$, Ext$, Drive$
 
 Status = USR(@BIND_RDCONF_STRINGS)
@@ -199,11 +202,36 @@ FUNC ScanDrive(Path$)
   CLOSE #1
 ENDFUNC
 
+FUNC FileAreaRootSeen()
+  FOR J = 0 TO AreaRootCount - 1
+    IF UCASE$($(ADR(AreaRoots) + J * 31)) = UCASE$(AreaPath$) THEN RETURN 1
+  NEXT J
+  RETURN 0
+ENDFUNC
+
+FUNC RememberFileAreaRoot()
+  MOVE ADR(AreaPath$), ADR(AreaRoots) + AreaRootCount * 31, LEN(AreaPath$) + 1
+  INC AreaRootCount
+ENDFUNC
+
 FUNC DiscoverFiles()
   Count = 0
+  AreaRootCount = 0
   ScanDrive("D1:")
   IF UCASE$(TextDrive$) <> "D1:" THEN ScanDrive(TextDrive$)
   IF UCASE$(FileDrive$) <> "D1:" AND UCASE$(FileDrive$) <> UCASE$(TextDrive$) THEN ScanDrive(FileDrive$)
+  FOR K = 0 TO 5
+    Status = ResolveFileArea(K)
+    IF Status < 0
+      PRINT "AREAS.CFG ERROR "; AreaError
+      PAUSE 120
+      RETURN
+    ENDIF
+    IF NOT FileAreaRootSeen()
+      RememberFileAreaRoot()
+      IF UCASE$(AreaPath$) <> "D1:" AND UCASE$(AreaPath$) <> UCASE$(TextDrive$) AND UCASE$(AreaPath$) <> UCASE$(FileDrive$) THEN ScanDrive(AreaPath$)
+    ENDIF
+  NEXT K
 ENDFUNC
 
 FUNC LoadManifest()

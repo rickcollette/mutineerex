@@ -80,16 +80,16 @@ FR0 = $00D4
 
 .proc REMMS_CALL0
         pla                         ; target high
-        sta     remms_target+1
+        sta     remms_call_target+2
         pla                         ; target low
-        sta     remms_target
+        sta     remms_call_target+1
         lda     #>(remms_return-1)
         pha
         lda     #<(remms_return-1)
         pha
         lda     #0                  ; Atari BASIC argument count
         pha
-        jmp     (remms_target)
+        jmp     remms_call_target
 .endproc
 
 .proc REMMS_CALL1
@@ -98,9 +98,9 @@ FR0 = $00D4
         pla                         ; value low
         sta     remms_value
         pla                         ; target high
-        sta     remms_target+1
+        sta     remms_call_target+2
         pla                         ; target low
-        sta     remms_target
+        sta     remms_call_target+1
         lda     #>(remms_return-1)
         pha
         lda     #<(remms_return-1)
@@ -111,15 +111,17 @@ FR0 = $00D4
         pha
         lda     #1
         pha
-        jmp     (remms_target)
+        jmp     remms_call_target
 .endproc
+
+remms_call_target:
+        jmp     $FFFF
 
 remms_return:
         lda     FR0
         ldx     FR0+1
         rts
 
-remms_target:  .word 0
 remms_value:   .word 0
 
 ; One length byte followed by the maximum number of characters.

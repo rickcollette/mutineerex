@@ -35,7 +35,9 @@ cache files or whole `.COM`, `.ATA`, `.TXT`, `.V52`, `.RIP`, and `.IG` groups.
 At cold startup, `eosauto.bat` uses `cp` to populate the selected set and
 starts selected modules from RAM.
 Database, message, and file area storage stays on its configured physical
-drive. REMMS installs an EOS-only CIO `O:` bridge for exBASIC. SpartaDOS X
+drive. The live message and file modules resolve `D1:AREAS.CFG` on each module
+load; CONFIG and INIT are offline owners of registry updates and migrations.
+REMMS installs an EOS-only CIO `O:` bridge for exBASIC. SpartaDOS X
 already exposes shell drive O through the D: CIO handler, so runtime mappings
 use `DO:` while SDX shell commands use `O:`.
 The module chain does not silently fall back to D1 if a cached copy is missing.
@@ -43,11 +45,17 @@ Use compatible PORTB/XE
 extended RAM; Altirra 1088K is the verified configuration.
 
 `tools/build.py` assembles REMMS from `RESOURCES/REMMS/src/remms_sdx.asm` with
-the bundled `tools/mads.exe`. The public REMMS ABI is discovered at `$03E8`:
-signature `REM` and API/public/end/session pointers. Version 1.10 is in the
-public block and the session block identifies contract 9. The Mutineer-eX
-build uses exBASIC's USR convention (arguments on the CPU stack, return in
-A/X), not Atari BASIC's argument-count/FR0 convention.
+the bundled `tools/mads.exe`. BBS modules discover the public ABI through the
+16-byte `RLOC` locator at `$3EB0`, inside REMMS's MEMLO-protected allocation.
+It publishes locator version, REMMS version, session contract and the
+API/public/session/end pointers. Version 1.10 is also in the public block and
+the session block identifies contract 9. The Mutineer-eX build uses exBASIC's
+USR convention (arguments on the CPU stack, return in A/X), not Atari BASIC's
+argument-count/FR0 convention.
+
+There is no page-three discovery mirror. DOS and PBI executable loaders may
+reuse that memory during a module handoff, so the protected locator is the
+only supported discovery contract.
 
 ## Resident handoff
 

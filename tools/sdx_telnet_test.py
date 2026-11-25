@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -39,10 +40,19 @@ TRANSPORT = "fujinet"
 DRIVER_NAME = "NHAND"
 DRIVER_NUMBER = 4
 USE_RAMDISK = False
+POISON_PAGE3_ON_MAIN_LOAD = False
 CALL_READY_TIMEOUT = 240.0
 PROGRAMS = ("wfc", "mainbbs", "message", "files", "doors", "bjack", "slots")
 CORE = PROGRAMS[:5]
 SCREENS = ("WFC", "WELC", "BULL", "FUNC", "HELP", "MESGM", "FILEM", "NEWU")
+
+
+def prepend_xex_segment(data: bytes, address: int, payload: bytes) -> bytes:
+    """Add one absolute segment before a normal Atari load file."""
+    if not data.startswith(b"\xff\xff"):
+        raise RuntimeError("module is not an absolute Atari load file")
+    segment = struct.pack("<HH", address, address + len(payload) - 1) + payload
+    return b"\xff\xff" + segment + data[2:]
 
 
 class Wire:
@@ -165,6 +175,12 @@ def make_case(target: Path) -> None:
         for name, entry in entries
         if not entry["status"] & sdfs.ST_DIR
     }
+    if POISON_PAGE3_ON_MAIN_LOAD:
+        # Reproduce a DOS/PBI loader using page-three workspace. Modules must
+        # remain independent of this unprotected memory.
+        files["MAINBBS.COM"] = prepend_xex_segment(
+            files["MAINBBS.COM"], 0x03E8, bytes(16)
+        )
     files["BBS.CFG"] = atascii_lines(
         "MUTINREX CFG 1", "SYSOP", "0", "1", "5", "15",
         "ATE0 Q0 V1 S2=255 S4=24 S7=15", "1024", "8",
@@ -174,6 +190,21 @@ def make_case(target: Path) -> None:
     files["SYSTEM.MET"] = atascii_lines("1", "0", "0")
     files["USERS.DAT"] = b"*\x9b" + bytes(4096)
     files["CALLERS.DAT"] = b"*\x9b" + bytes(4096)
+    area_lines = ["MUTINREX AREAS 1"]
+    area_lines.extend(f"F|{number}|D1:" for number in range(6))
+    area_lines.append("M|A|1|D1:")
+    if USE_RAMDISK:
+        # The RAM-disk variants also prove recovery from a malformed live
+        # registry while the known-good backup remains authoritative.
+        files["AREAS.CFG"] = atascii_lines("BROKEN AREA REGISTRY")
+        files["AREAS.BAK"] = atascii_lines(*area_lines)
+    else:
+        files["AREAS.CFG"] = atascii_lines(*area_lines)
+    files["MESSAGE.DA1"] = bytes(1250)
+    files["MESSAGE.IA1"] = b""
+    files["MESSAGE.MA1"] = atascii_lines(
+        "GENERAL", "General discussion", "0", "0", "0", "0"
+    )
     files["BBSDATE.TXT"] = atascii_lines("11/23/2026")
     files["BBSTIME.TXT"] = atascii_lines("12:00:00")
     if IMAGE_PLATFORM == "eos":
@@ -361,6 +392,8 @@ def main() -> int:
                       else b"D1:message.com")
             wire.expect(b"Loading MESSAGE from " + source, 45.0)
             wire.expect(b"MESSAGE >", 120.0)
+            wire.send_line("J")
+            wire.expect(b"GENERAL", 45.0)
             wire.send_line("X")
             wire.expect(b"Preparing MAINBBS", 45.0)
             source = (b"RAMDISK:mainbbs.com" if USE_RAMDISK
@@ -390,9 +423,9 @@ def main() -> int:
                         address = hatabs[offset + 1] | hatabs[offset + 2] << 8
                         devices.append(f"{chr(hatabs[offset])}:${address:04X}")
                 failures.append("HATABS at failure: " + ", ".join(devices))
-                anchors = read_memory(proc, 0x03EC, 8)
-                public = anchors[2] | anchors[3] << 8
-                session = anchors[6] | anchors[7] << 8
+                locator = read_memory(proc, 0x3EB0, 16)
+                public = locator[10] | locator[11] << 8
+                session = locator[12] | locator[13] << 8
                 public_state = read_memory(proc, public, 12)
                 session_state = read_memory(proc, session, 161)
                 failures.append(

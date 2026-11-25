@@ -78,9 +78,9 @@ same line, after one character: `R 5-9`, `K 12`.
 | Cmd | Name | What it does |
 |-----|------|--------------|
 | D | Download | Sends an accessible controlled file: give its full `NAME.CTL`, then Y for XMODEM or N to list it as text |
-| F | Files | Lists accessible files in the current category with wrapped descriptions; Text Files is selected when the file area opens |
+| F | Files | Lists accessible files in the current exclusive area with wrapped descriptions; Text Files is selected when the file area opens |
 | I | Info | Compatibility alias for F |
-| J | Category | Selects Text Files, Games, Applications, Tools, Archivers, or Unknown, then lists that category |
+| J | Area | Selects Text Files, Games, Applications, Tools, Archivers, or Unknown, then lists that exclusive storage area |
 | U | Upload | Level 8/9: uploads a new controlled `NAME.CTL` file |
 | V | Delete file | Level 8/9: deletes a controlled file |
 | X | Main menu | Returns to the main command prompt |

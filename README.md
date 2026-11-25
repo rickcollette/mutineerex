@@ -108,8 +108,9 @@ rather than overwriting them.
 ## Status
 
 Ported: the BBS (`AMIS.BBS`) as five REMMS modules, with separate INIT
-and CONFIG utilities. Not ported yet: the original message-file compactor
+and CONFIG utilities. CONFIG compacts active message data when a base path or
+access level is moved; the original standalone message-file compactor
 (also named `MESSAGE.COM` on the 1983 disk; the new module now uses that
-filename), `CALLERS.COM` (trims the callers list),
+filename) is still not ported. Also not ported are `CALLERS.COM` (trims the callers list),
 `EXPAND.BAS` (makes the data files bigger) and `AUTODIAL` (a phone list
 editor, not part of the BBS).

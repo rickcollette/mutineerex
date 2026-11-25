@@ -4,9 +4,14 @@
 REMMS_BASE = $1E00
 .endif
 
-REMMS_DISCOVERY = $03E8
 REMMS_VERSION_MAJOR = 1
 REMMS_VERSION_MINOR = 10
+
+; The authoritative locator lives inside the MEMLO-protected resident image.
+REMMS_LOCATOR_OFFSET  = $20B0
+REMMS_LOCATOR         = REMMS_BASE+REMMS_LOCATOR_OFFSET
+REMMS_LOCATOR_VERSION = 1
+REMMS_LOCATOR_SIZE    = 16
 
 ; Resident layout. These match the proven MMS resident memory map.
 REMMS_PUBLIC_OFFSET  = $60

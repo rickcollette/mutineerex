@@ -8,6 +8,7 @@ FUNC FileAreaManager()
     PRINT "         FILE AREAS"
     PRINT "         ----------"
     PRINT " L LIST CONTROLLED FILES"
+    PRINT " P EDIT AREA PATHS"
     PRINT " A ADD COPIED FILE"
     PRINT " E EDIT FILE ENTRY"
     PRINT " R REMOVE FILE"
@@ -17,6 +18,8 @@ FUNC FileAreaManager()
     In$ = UCASE$(In$)
     IF In$ = "L"
       ListControlledFiles()
+    ELIF In$ = "P"
+      EditFileAreaPath()
     ELIF In$ = "A"
       AddControlledFile()
     ELIF In$ = "E"
@@ -54,7 +57,9 @@ FUNC ValidControlled()
 ENDFUNC
 
 FUNC ControlledExists()
-  F$ = FileDrive$ : F$ =+ Target$
+  Value = FileStorageArea(Target$)
+  IF Value < 0 OR ResolveFileArea(Value) <> 1 THEN Status = AreaError : RETURN 0
+  F$ = AreaPath$ : F$ =+ Target$
   RETURN FileExists()
 ENDFUNC
 
@@ -157,39 +162,96 @@ FUNC CategoryName$(C)
 ENDFUNC
 
 FUNC ListControlledFiles()
-  LOCAL C, Y, L, I
+  LOCAL C, Y, L, I, A
   CLS
-  PRINT "CONTROLLED DOWNLOADS ON "; FileDrive$
+  PRINT "CONTROLLED DOWNLOADS"
   PRINT
-  F$ = FileDrive$ : F$ =+ "*.???"
-  CLOSE #1
-  OPEN #1, 6, 0, F$
-  IF ERR() <> 1 THEN PRINT "CANNOT READ DIRECTORY" : PauseForKey() : RETURN
   Count = 0
-  DO
-    INPUT #1, S$
-    Status = ERR()
-    IF Status <> 1 OR INSTR(S$, "FREE SECTORS") > 0 THEN EXIT
-    IF LEN(S$) >= 13
-      C = PEEK(ADR(S$) + 11)
-      Y = PEEK(ADR(S$) + 12)
-      L = PEEK(ADR(S$) + 13) - 48
-      IF (C = 71 OR C = 65 OR C = 84 OR C = 82 OR C = 85) AND (Y = 67 OR Y = 69 OR Y = 88 OR Y = 66 OR Y = 84 OR Y = 85) AND L >= 1 AND L <= 9
-        Target$ = ""
-        FOR I = 3 TO 10
-          IF PEEK(ADR(S$) + I) <> 32 THEN Target$ =+ CHR$(PEEK(ADR(S$) + I))
-        NEXT I
-        Target$ =+ "." : Target$ =+ S$[11, 3]
-        CatalogFind()
-        PRINT Target$; " "; CategoryName$(C); " L"; L
-        PRINT "  "; Desc$
-        INC Count
-      ENDIF
+  FOR A = 0 TO 5
+    Status = ResolveFileArea(A)
+    IF Status <> 1 THEN PRINT "AREAS.CFG ERROR "; AreaError : PauseForKey() : RETURN
+    PRINT AreaTitle$(A); ": "; AreaPath$
+    F$ = AreaPath$ : F$ =+ "*.???"
+    CLOSE #1
+    OPEN #1, 6, 0, F$
+    IF ERR() = 1
+      DO
+        INPUT #1, S$
+        Status = ERR()
+        IF Status <> 1 OR INSTR(S$, "FREE SECTORS") > 0 THEN EXIT
+        IF LEN(S$) >= 13
+          C = PEEK(ADR(S$) + 11)
+          Y = PEEK(ADR(S$) + 12)
+          L = PEEK(ADR(S$) + 13) - 48
+          IF (C = 71 OR C = 65 OR C = 84 OR C = 82 OR C = 85) AND (Y = 67 OR Y = 69 OR Y = 88 OR Y = 66 OR Y = 84 OR Y = 85) AND L >= 1 AND L <= 9
+            Target$ = ""
+            FOR I = 3 TO 10
+              IF PEEK(ADR(S$) + I) <> 32 THEN Target$ =+ CHR$(PEEK(ADR(S$) + I))
+            NEXT I
+            Target$ =+ "." : Target$ =+ S$[11, 3]
+            IF FileStorageArea(Target$) = A
+              CatalogFind()
+              PRINT Target$; " "; CategoryName$(C); " L"; L
+              PRINT "  "; Desc$
+              INC Count
+            ENDIF
+          ENDIF
+        ENDIF
+      LOOP
+      CLOSE #1
+    ELSE
+      CLOSE #1
+      PRINT "  CANNOT READ DIRECTORY"
     ENDIF
-  LOOP
-  CLOSE #1
+  NEXT A
   IF Count = 0 THEN PRINT "NO CONTROLLED FILES"
   PauseForKey()
+ENDFUNC
+
+' F$ is the source and S$ the destination.  The destination is removed on
+' every error; the source is never changed here.
+FUNC CopyFileVerified()
+  LOCAL Code, Got1, Got2, I
+  CLOSE #1 : CLOSE #2
+  OPEN #1, 4, 0, F$
+  Status = ERR()
+  IF Status <> 1 THEN CLOSE #1 : RETURN 0
+  OPEN #2, 8, 0, S$
+  Status = ERR()
+  IF Status <> 1 THEN CLOSE #1 : CLOSE #2 : RETURN 0
+  DO
+    BGET #1, ADR(Blank), 125
+    Code = ERR()
+    Got1 = DPEEK($358)
+    IF Got1 > 0
+      BPUT #2, ADR(Blank), Got1
+      Status = ERR()
+      IF Status <> 1 THEN EXIT
+    ENDIF
+    IF Code <> 1 OR Got1 = 0 THEN EXIT
+  LOOP
+  CLOSE #1 : CLOSE #2
+  IF Status <> 1 OR (Code <> 1 AND Code <> 136)
+    IF Status = 1 THEN Status = Code
+    XIO 33, #2, 0, 0, S$
+    RETURN 0
+  ENDIF
+  OPEN #1, 4, 0, F$ : Code = ERR()
+  OPEN #2, 4, 0, S$ : Status = ERR()
+  IF Code <> 1 OR Status <> 1 THEN CLOSE #1 : CLOSE #2 : XIO 33, #2, 0, 0, S$ : RETURN 0
+  DO
+    BGET #1, ADR(Blank), 125 : Code = ERR() : Got1 = DPEEK($358)
+    BGET #2, ADR(MoveBuf), 125 : Status = ERR() : Got2 = DPEEK($368)
+    IF Got1 <> Got2 THEN Status = 18 : EXIT
+    FOR I = 0 TO Got1 - 1
+      IF Blank(I) <> MoveBuf(I) THEN Status = 18 : EXIT
+    NEXT I
+    IF Status = 18 OR Code <> 1 OR Got1 = 0 THEN EXIT
+  LOOP
+  CLOSE #1 : CLOSE #2
+  IF Got1 = Got2 AND (Code = 136 OR Got1 = 0) AND (Status = 136 OR Got2 = 0) THEN Status = 1
+  IF Status <> 1 THEN XIO 33, #2, 0, 0, S$ : RETURN 0
+  RETURN 1
 ENDFUNC
 
 FUNC AskFileMetadata()
@@ -215,29 +277,204 @@ FUNC AskFileMetadata()
 ENDFUNC
 
 FUNC RenameControlledFile()
-  F$ = FileDrive$ : F$ =+ OldName$
-  S$ = F$ : S$ =+ "," : S$ =+ NewName$
-  XIO 32, #1, 0, 0, S$
+  Value = FileStorageArea(OldName$)
+  Status = ResolveFileArea(Value)
+  IF Status <> 1 THEN Status = AreaError : RETURN
+  F$ = AreaPath$ : F$ =+ OldName$
+  K = FileStorageArea(NewName$)
+  Status = ResolveFileArea(K)
+  IF Status <> 1 THEN Status = AreaError : RETURN
+  S$ = AreaPath$ : S$ =+ NewName$
+  IF F$[1, LEN(F$) - LEN(OldName$)] = S$[1, LEN(S$) - LEN(NewName$)]
+    T$ = F$ : T$ =+ "," : T$ =+ NewName$
+    XIO 32, #1, 0, 0, T$
+    Status = ERR()
+  ELSE
+    IF NOT CopyFileVerified() THEN RETURN
+    Status = 1
+  ENDIF
+ENDFUNC
+
+FUNC RollbackControlledRename()
+  LOCAL OldArea, NewArea
+  OldArea = FileStorageArea(OldName$)
+  NewArea = FileStorageArea(NewName$)
+  IF ResolveFileArea(OldArea) <> 1 THEN RETURN
+  F$ = AreaPath$ : F$ =+ OldName$
+  IF ResolveFileArea(NewArea) <> 1 THEN RETURN
+  S$ = AreaPath$ : S$ =+ NewName$
+  IF F$[1, LEN(F$) - LEN(OldName$)] = S$[1, LEN(S$) - LEN(NewName$)]
+    T$ = S$ : T$ =+ "," : T$ =+ OldName$
+    XIO 32, #1, 0, 0, T$
+  ELSE
+    XIO 33, #1, 0, 0, S$
+  ENDIF
+ENDFUNC
+
+FUNC ControlledNameFromDirectory()
+  LOCAL I
+  NewName$ = ""
+  FOR I = 3 TO 10
+    IF PEEK(ADR(S$) + I) <> 32 THEN NewName$ =+ CHR$(PEEK(ADR(S$) + I))
+  NEXT I
+  NewName$ =+ "." : NewName$ =+ S$[11, 3]
+ENDFUNC
+
+FUNC RemoveCopiedAreaFiles(N)
+  F$ = OldName$ : F$ =+ "*.???"
+  CLOSE #5 : OPEN #5, 6, 0, F$
+  IF ERR() <> 1 THEN CLOSE #5 : RETURN
+  DO
+    INPUT #5, S$
+    IF ERR() <> 1 OR INSTR(S$, "FREE SECTORS") > 0 THEN EXIT
+    IF LEN(S$) >= 13
+      ControlledNameFromDirectory()
+      IF FileStorageArea(NewName$) = N
+        F$ = Target$ : F$ =+ NewName$
+        XIO 33, #1, 0, 0, F$
+      ENDIF
+    ENDIF
+  LOOP
+  CLOSE #5
+ENDFUNC
+
+FUNC RelocateFileArea(N)
+  LOCAL Code
+  BaseId = N
+  Status = ResolveFileArea(N)
+  IF Status <> 1 THEN Status = AreaError : RETURN 0
+  OldName$ = AreaPath$
+  IF NOT AskStoragePath() THEN RETURN 0
+  Target$ = AreaPath$
+  IF Target$ = OldName$ THEN RETURN SaveAreaRegistry(0)
+  F$ = OldName$ : F$ =+ "*.???"
+  CLOSE #5 : OPEN #5, 6, 0, F$
   Status = ERR()
+  IF Status <> 1 THEN CLOSE #5 : RETURN 0
+  DO
+    INPUT #5, S$
+    Code = ERR()
+    IF Code <> 1 OR INSTR(S$, "FREE SECTORS") > 0 THEN EXIT
+    IF LEN(S$) >= 13
+      ControlledNameFromDirectory()
+      IF FileStorageArea(NewName$) = N
+        F$ = Target$ : F$ =+ NewName$
+        IF FileExists()
+          Status = 171
+          CLOSE #5
+          RETURN 0
+        ENDIF
+      ENDIF
+    ENDIF
+  LOOP
+  CLOSE #5
+  IF Code <> 1 AND Code <> 136
+    Status = Code
+    RETURN 0
+  ENDIF
+  ' No destination conflicts exist.  Copy and verify the entire area.
+  F$ = OldName$ : F$ =+ "*.???"
+  OPEN #5, 6, 0, F$
+  Status = ERR()
+  IF Status <> 1 THEN CLOSE #5 : RETURN 0
+  DO
+    INPUT #5, S$
+    Code = ERR()
+    IF Code <> 1 OR INSTR(S$, "FREE SECTORS") > 0 THEN EXIT
+    IF LEN(S$) >= 13
+      ControlledNameFromDirectory()
+      IF FileStorageArea(NewName$) = N
+        F$ = OldName$ : F$ =+ NewName$
+        S$ = Target$ : S$ =+ NewName$
+        IF NOT CopyFileVerified()
+          CLOSE #5
+          RemoveCopiedAreaFiles(N)
+          RETURN 0
+        ENDIF
+      ENDIF
+    ENDIF
+  LOOP
+  CLOSE #5
+  IF Code <> 1 AND Code <> 136
+    Status = Code
+    RemoveCopiedAreaFiles(N)
+    RETURN 0
+  ENDIF
+  IF NOT SaveAreaRegistry(0)
+    RemoveCopiedAreaFiles(N)
+    RETURN 0
+  ENDIF
+  ' The registry now makes the verified copies authoritative.
+  F$ = OldName$ : F$ =+ "*.???"
+  OPEN #5, 6, 0, F$
+  IF ERR() = 1
+    DO
+      INPUT #5, S$
+      IF ERR() <> 1 OR INSTR(S$, "FREE SECTORS") > 0 THEN EXIT
+      IF LEN(S$) >= 13
+        ControlledNameFromDirectory()
+        IF FileStorageArea(NewName$) = N
+          F$ = OldName$ : F$ =+ NewName$
+          XIO 33, #1, 0, 0, F$
+        ENDIF
+      ENDIF
+    LOOP
+  ENDIF
+  CLOSE #5
+  Status = 1
+  RETURN 1
+ENDFUNC
+
+FUNC EditFileAreaPath()
+  LOCAL I
+  CLS
+  FOR I = 0 TO 5
+    Status = ResolveFileArea(I)
+    IF Status <> 1 THEN PRINT "AREAS.CFG ERROR "; AreaError : PauseForKey() : RETURN
+    PRINT I; " "; AreaTitle$(I); " "; AreaPath$
+  NEXT I
+  BaseId = AskNumber(0, 0, 5)
+  IF RelocateFileArea(BaseId)
+    PRINT AreaTitle$(BaseId); " PATH UPDATED"
+  ELSE
+    PRINT "AREA MOVE FAILED; ORIGINAL FILES REMAIN ACTIVE"
+    ShowError()
+    RETURN
+  ENDIF
+  PauseForKey()
 ENDFUNC
 
 FUNC AddControlledFile()
   CLS
-  PRINT "COPY THE FILE TO "; FileDrive$
+  PRINT "COPY THE FILE TO ITS CONFIGURED AREA"
   PRINT "BEFORE ADDING IT HERE."
   PRINT "CURRENT DISK NAME >";
   INPUT ; OldName$
   OldName$ = UCASE$(OldName$)
   IF OldName$ = "" THEN RETURN
+  ' New imports are staged in the legacy FileDrive$ catalog location.
   F$ = FileDrive$ : F$ =+ OldName$
   IF NOT FileExists() THEN PRINT "FILE NOT FOUND" : PauseForKey() : RETURN
   AskFileMetadata()
+  ' Move the staged payload to the area derived from the encoded name.
   Target$ = NewName$
-  IF OldName$ <> NewName$ AND ControlledExists()
-    PRINT "TARGET FILE ALREADY EXISTS" : PauseForKey() : RETURN
-  ENDIF
-  IF OldName$ <> NewName$
-    RenameControlledFile()
+  Value = FileStorageArea(NewName$)
+  Status = ResolveFileArea(Value)
+  IF Status <> 1 THEN Status = AreaError : ShowError() : RETURN
+  S$ = AreaPath$ : S$ =+ NewName$
+  F$ = FileDrive$ : F$ =+ OldName$
+  IF F$ <> S$
+    T$ = F$
+    F$ = S$
+    IF FileExists() THEN PRINT "TARGET FILE ALREADY EXISTS" : PauseForKey() : RETURN
+    F$ = T$
+    IF F$[1, LEN(F$) - LEN(OldName$)] = S$[1, LEN(S$) - LEN(NewName$)]
+      T$ = F$ : T$ =+ "," : T$ =+ NewName$
+      XIO 32, #1, 0, 0, T$ : Status = ERR()
+    ELSE
+      CopyFileVerified()
+      IF Status = 1 THEN XIO 33, #1, 0, 0, F$
+    ENDIF
     IF Status <> 1 THEN ShowError() : RETURN
   ENDIF
   PRINT "DESCRIPTION (70 CHARACTERS) >";
@@ -292,6 +529,15 @@ FUNC EditControlledFile()
   ENDIF
   Target$ = OldName$
   CatalogRewrite(0)
+  IF Status = 1 AND OldName$ <> NewName$
+    Value = FileStorageArea(OldName$)
+    IF ResolveFileArea(Value) = 1
+      F$ = AreaPath$ : F$ =+ OldName$
+      XIO 33, #1, 0, 0, F$
+    ENDIF
+  ELIF Status <> 1 AND OldName$ <> NewName$
+    RollbackControlledRename()
+  ENDIF
   IF Status = 1 THEN PRINT "FILE ENTRY UPDATED" ELSE ShowError()
   PauseForKey()
 ENDFUNC
@@ -304,7 +550,9 @@ FUNC RemoveControlledFile()
   IF NOT ValidControlled() OR NOT ControlledExists() THEN PRINT "FILE NOT FOUND" : PauseForKey() : RETURN
   PRINT "DELETE "; Target$; " (Y/N) >";
   IF NOT AskYes() THEN RETURN
-  F$ = FileDrive$ : F$ =+ Target$
+  Value = FileStorageArea(Target$)
+  IF ResolveFileArea(Value) <> 1 THEN Status = AreaError : ShowError() : RETURN
+  F$ = AreaPath$ : F$ =+ Target$
   XIO 33, #1, 0, 0, F$
   Status = ERR()
   IF Status <> 1 THEN ShowError() : RETURN

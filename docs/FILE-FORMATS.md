@@ -4,8 +4,10 @@ All text files use the ATASCII end of line (155, `$9B`). "Line" below
 means text followed by 155. Numbers are written as text, as `PRINT #`
 writes them.
 
-The drives are set with CONFIG: *data* = setting 9, *messages* =
-setting 10, *text* = setting 11, *downloads* = setting 12.
+The bootstrap drives are set with CONFIG: *data* = setting 9, default
+*messages* = setting 10, *text* = setting 11, and the central download
+catalog/default file root = setting 12. Per-base and per-area paths are in
+`D1:AREAS.CFG`.
 
 ## BBS.CFG (always D1:)
 
@@ -32,6 +34,35 @@ Written by CONFIG and read by the BBS and CONFIG
 | 16 | Start it with X (cartridge off), 1 or 0 | `0` |
 | 17 | Clock: 0 = manual, 1 = current EOS/JIFFY, 2 = APETime, 3 = R-Time 8 | `0` |
 | 18 | RAM cache: 1 = load selected files from their explicit EOS/SDX RAM-disk targets, 0 = use configured disk drives | `0` |
+
+## AREAS.CFG (always D1:)
+
+The first line is `MUTINREX AREAS 1`. It is followed by exactly six file
+records and zero or more message-base records:
+
+```text
+F|0|D1:>TEXT>
+F|1|D2:>GAMES>
+F|2|D2:>APPS>
+F|3|D3:>TOOLS>
+F|4|D3:>ARCHIVE>
+F|5|D1:>UNKNOWN>
+M|A|1|D1:>MESSAGES>
+```
+
+File IDs are Text, Games, Applications, Tools, Archivers, and Unknown in
+that order. Message IDs are A–Z and include their access level. Canonical
+paths use `D1:` through `D8:`, uppercase 8.3 folder components, `>`
+separators, a trailing separator, and at most 30 characters. Root paths such
+as `D1:` are valid. Wildcards, commas, `.`/`..`, and unsupported devices are
+invalid.
+
+CONFIG writes `AREAS.NEW`, validates it, retains the previous valid registry
+as `AREAS.BAK`, and then installs it as `AREAS.CFG`. Readers recover from a
+malformed live file through a valid backup. If neither copy is valid, the BBS
+stops with a configuration error. If both files are absent, legacy boards use
+the message and downloads roots from `BBS.CFG`; the registry is created when
+INIT or CONFIG first saves area-specific settings.
 
 ## eosauto.bat (D1:)
 
@@ -153,7 +184,7 @@ the start (the file is circular). The C command starts reading after the
 end marker, at the first `+`, which is the oldest caller still in the
 file.
 
-## MESSAGE.DIL message bases (messages drive)
+## MESSAGE.DIL message bases (configured base path)
 
 Each base has ID `A` through `Z` and minimum access level `1` through `9`.
 The three-character extension is `DIL`: `D` is the file role, `I` the base
@@ -213,8 +244,10 @@ line 1      up to 120 characters
 ...
 ```
 
-The text of killed and modified messages stays in the file until it is
-compacted.
+The text of killed and modified messages stays in the file until CONFIG moves
+the base. A path or access-level move rebuilds the active index and data,
+preserves numbering, counters and allocation, and compacts those obsolete
+bodies.
 
 ## Text screens (text drive)
 
@@ -225,7 +258,7 @@ ATASCII graphics or inverse characters. ASCII terminals receive `.TXT`;
 ATASCII terminals and local mode receive `.ATA`. `MESGM` and `FILEM` are
 the message-area and file-area menus.
 
-## Controlled files (downloads drive)
+## Controlled files (configured file-area paths)
 
 Files use `NAME.CTL`: a name of one to seven letters/digits, followed by a
 three-character control extension:
@@ -240,7 +273,8 @@ For example, `PACMAN.GC1` is a game, COM file, visible and downloadable by
 levels 1 through 9. Files above the caller's level are absent from listings
 and cannot be downloaded. Only levels 8 and 9 can upload or delete files.
 
-`FILES.DAT` is an ATASCII line-oriented catalog on the downloads drive.
+`FILES.DAT` remains an ATASCII line-oriented catalog on the `FileDrive$`
+downloads root even when payloads live in other paths.
 Each record connects a complete controlled filename to its description:
 
 ```
@@ -253,7 +287,7 @@ file without a catalog record is shown as `No description available.`
 Level-8/9 uploads prompt for a description and update this file; deleting a
 download removes its record.
 
-The file area initially selects Text Files (files whose type byte is `T`).
-The other views use the category byte: Games `G`, Applications `A`, Tools
-`T`, Archivers `R`, and Unknown `U`. Thus a tool/text file can be found in
-both the Text Files and Tools views.
+The file area initially selects Text Files. A type byte of `T` exclusively
+routes the payload to Text. Every non-text file is routed by category: Games
+`G`, Applications `A`, Tools `T`, Archivers `R`, or Unknown `U`. A text file
+therefore appears only in Text, even when its category byte says Tool.

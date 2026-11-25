@@ -2,16 +2,23 @@
 
 ' Builds the paths for base From (0=A through 25=Z)
 FUNC BuildBasePaths()
+  St = ResolveMessageArea(From)
+  IF St <> 1
+    MDF$ = "" : MIF$ = "" : FileName$ = ""
+    IF St = 0 THEN St = 170 ELSE St = AreaError
+    RETURN
+  ENDIF
+  BaseLevel(From) = AreaLevel
   T$ = STR$(BaseLevel(From))
-  MDF$ = MsgDrive$
+  MDF$ = AreaPath$
   MDF$ =+ "MESSAGE.D"
   MDF$ =+ CHR$(65 + From)
   MDF$ =+ T$
-  MIF$ = MsgDrive$
+  MIF$ = AreaPath$
   MIF$ =+ "MESSAGE.I"
   MIF$ =+ CHR$(65 + From)
   MIF$ =+ T$
-  FileName$ = MsgDrive$
+  FileName$ = AreaPath$
   FileName$ =+ "MESSAGE.M"
   FileName$ =+ CHR$(65 + From)
   FileName$ =+ T$
@@ -23,32 +30,52 @@ FUNC DiscoverBases()
     BasePresent(Q1) = 0
     BaseLevel(Q1) = 0
   NEXT Q1
-  CLOSE #FileCh
-  S$ = MsgDrive$
-  S$ =+ "MESSAGE.M??"
-  OPEN #FileCh, 6, 0, S$
-  IF ERR() <> 1 THEN RETURN
-  DO
-    INPUT #FileCh, S$
-    Q2 = ERR()
-    IF Q2 <> 1 OR INSTR(S$, "FREE SECTORS") > 0 THEN EXIT
-    IF LEN(S$) >= 13
-      Q2 = PEEK(ADR(S$) + 11)
-      Q3 = PEEK(ADR(S$) + 12)
-      Q4 = PEEK(ADR(S$) + 13) - 48
-      IF Q2 = 77 AND Q3 >= 65 AND Q3 <= 90 AND Q4 >= 1 AND Q4 <= 9
-        BasePresent(Q3 - 65) = 1
-        BaseLevel(Q3 - 65) = Q4
+  St = FindAreaRegistry()
+  IF St < 0
+    PRINT "CONFIGURATION ERROR "; AreaError; " IN AREAS.CFG"
+    END
+  ENDIF
+  IF St = 0
+    CLOSE #FileCh
+    S$ = MsgDrive$ : S$ =+ "MESSAGE.M??"
+    OPEN #FileCh, 6, 0, S$
+    IF ERR() <> 1 THEN CLOSE #FileCh : RETURN
+    DO
+      INPUT #FileCh, S$
+      Q2 = ERR()
+      IF Q2 <> 1 OR INSTR(S$, "FREE SECTORS") > 0 THEN EXIT
+      IF LEN(S$) >= 13
+        Q2 = PEEK(ADR(S$) + 11)
+        Q3 = PEEK(ADR(S$) + 12)
+        Q4 = PEEK(ADR(S$) + 13) - 48
+        IF Q2 = 77 AND Q3 >= 65 AND Q3 <= 90 AND Q4 >= 1 AND Q4 <= 9
+          BasePresent(Q3 - 65) = 1
+          BaseLevel(Q3 - 65) = Q4
+        ENDIF
       ENDIF
+    LOOP
+    CLOSE #FileCh
+    RETURN
+  ENDIF
+  OpenAreaRegistry(St)
+  DO
+    INPUT #6, AreaLine$
+    IF ERR() <> 1 THEN EXIT
+    IF AreaLine$[1, 1] = "M"
+      ParseAreaRecord()
+      From = AreaError - 6
+      BasePresent(From) = 1
+      BaseLevel(From) = AreaLevel
     ENDIF
   LOOP
-  CLOSE #FileCh
+  CLOSE #6
 ENDFUNC
 
 ' Loads one base's metadata and makes it active; the modem is already closed
 FUNC ReadBaseMeta(K)
   From = K
   BuildBasePaths()
+  IF St <> 1 THEN RETURN
   OPEN #FileCh, 4, 0, FileName$
   St = ERR()
   IF St = 1

@@ -30,6 +30,17 @@ REMMS_PAGER_KEY_OTHER      = 7
         icl 'remms_data.asm'
         icl 'remms_eos_cache.asm'
 
+; Authoritative discovery contract.  Unlike the legacy page-three mirror,
+; this record is covered by MEMLO and survives every DOS executable load.
+        org REMMS_LOCATOR
+remms_locator_record
+        dta c'RLOC'
+        dta b(REMMS_LOCATOR_VERSION)
+        dta b(REMMS_VERSION_MAJOR),b(REMMS_VERSION_MINOR)
+        dta b(REMMS_SESSION_VERSION)
+        dta a(remms_api),a(remms_public_block)
+        dta a(remms_session_block),a(REMMS_END)
+
 REMMS_END
 
 ; SpartaDOS X runs binary load files after loading. Keep the resident API jump

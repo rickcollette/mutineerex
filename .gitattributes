@@ -1,0 +1,3 @@
+.gitignore whitespace=cr-at-eol
+src/files.bas whitespace=cr-at-eol
+src/transfer.bas whitespace=cr-at-eol

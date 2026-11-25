@@ -1,10 +1,12 @@
 ' REMMS 1.10 discovery, API calls and session-contract-9 handoff.
 
 FUNC RemmsDiscover()
-  IF PEEK($03E8) <> 82 OR PEEK($03E9) <> 69 OR PEEK($03EA) <> 77 THEN RETURN 0
-  RemmsApi = DPEEK($03EC)
-  RemmsPublic = DPEEK($03EE)
-  RemmsSession = DPEEK($03F2)
+  ' The sole locator is inside REMMS's MEMLO-protected allocation.
+  IF DPEEK($3EB0) <> $4C52 OR DPEEK($3EB2) <> $434F THEN RETURN 0
+  IF DPEEK($3EB4) <> $0101 OR DPEEK($3EB6) <> $090A THEN RETURN 0
+  RemmsApi = DPEEK($3EB8)
+  RemmsPublic = DPEEK($3EBA)
+  RemmsSession = DPEEK($3EBC)
   IF RemmsApi = 0 OR RemmsPublic = 0 OR RemmsSession = 0 THEN RETURN 0
   IF PEEK(RemmsPublic) <> 82 OR PEEK(RemmsPublic + 1) <> 69 THEN RETURN 0
   IF PEEK(RemmsPublic + 5) <> 1 OR PEEK(RemmsPublic + 6) <> 10 THEN RETURN 0

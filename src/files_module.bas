@@ -1,6 +1,8 @@
 INCLUDE "module_common.bas"
 ModuleImage = 5
 INCLUDE "module_env.bas"
+INCLUDE "areas_runtime.bas"
+Q1 = USR(@BIND_AREA_STRINGS)
 
 AttachModule(5)
 IF NOT LoadSystemMeta() THEN END

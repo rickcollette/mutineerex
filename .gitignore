@@ -7,6 +7,7 @@ TVUBBS/
 
 # Repository metadata
 !.gitignore
+!.gitattributes
 !VERSION
 !LICENSE
 !LICENSE.*

@@ -6,6 +6,7 @@
 ' All later administration belongs in CONFIG.COM.
 
 INCLUDE "settings.bas"
+INCLUDE "areas.bas"
 
 DIM Blank(124) BYTE
 DIM Status, K, MSect, MByte, CSect, CByte
@@ -105,6 +106,9 @@ Status = ERR()
 CLOSE #1
 IF Status <> 1 THEN InitFail() : END
 
+Status = InitWriteAreas()
+IF Status <> 1 THEN InitFail() : END
+
 PRINT
 PRINT "INITIALIZATION COMPLETE"
 PRINT "GENERAL MESSAGE BASE: 100 SECTORS"
@@ -147,6 +151,40 @@ FUNC InitWriteStartup()
   Status = ERR()
   CLOSE #1
   RETURN Status
+ENDFUNC
+
+FUNC InitWriteAreas()
+  LOCAL I, Code
+  AreaPath$ = FileDrive$
+  IF NOT NormalizeAreaPath() THEN F$ = "D1:AREAS.CFG" : RETURN 18
+  XIO 33, #1, 0, 0, "D1:AREAS.NEW"
+  OPEN #1, 8, 0, "D1:AREAS.NEW"
+  Code = ERR()
+  IF Code <> 1 THEN CLOSE #1 : F$ = "D1:AREAS.NEW" : RETURN Code
+  PRINT #1; "MUTINREX AREAS 1"
+  FOR I = 0 TO 5
+    PRINT #1; "F|"; CHR$(48 + I); "|"; AreaPath$
+  NEXT I
+  AreaPath$ = MsgDrive$
+  IF NOT NormalizeAreaPath() THEN CLOSE #1 : F$ = "D1:AREAS.CFG" : RETURN 18
+  PRINT #1; "M|A|1|"; AreaPath$
+  Code = ERR()
+  CLOSE #1
+  IF Code <> 1 THEN F$ = "D1:AREAS.NEW" : RETURN Code
+  XIO 33, #1, 0, 0, "D1:AREAS.BAK"
+  AreaLine$ = "D1:AREAS.CFG,AREAS.BAK"
+  XIO 32, #1, 0, 0, AreaLine$
+  Code = ERR()
+  IF Code <> 1 AND Code <> 170 THEN F$ = "D1:AREAS.CFG" : RETURN Code
+  AreaLine$ = "D1:AREAS.NEW,AREAS.CFG"
+  XIO 32, #1, 0, 0, AreaLine$
+  Code = ERR()
+  IF Code <> 1
+    AreaLine$ = "D1:AREAS.BAK,AREAS.CFG"
+    XIO 32, #1, 0, 0, AreaLine$
+  ENDIF
+  F$ = "D1:AREAS.CFG"
+  RETURN Code
 ENDFUNC
 
 FUNC InitFail()

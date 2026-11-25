@@ -100,16 +100,19 @@ path before supporting live reloads.
 
 ## Discovery Record
 
-REMMS publishes a small record at `$03E8` for BASIC/loader code:
+The authoritative 16-byte `RLOC` record is at `$3EB0`, inside the resident
+allocation protected by MEMLO:
 
 | Offset | Meaning |
 | --- | --- |
-| `+0..+2` | Signature: `REM` |
-| `+3` | Major version |
-| `+4..+5` | API jump-table address |
-| `+6..+7` | Public state address |
-| `+8..+9` | Resident end address |
-| `+10..+11` | BBS session block address |
+| `+0..+3` | Signature: `RLOC` |
+| `+4` | Locator version |
+| `+5..+6` | REMMS major/minor version |
+| `+7` | Session contract version |
+| `+8..+9` | API jump-table address |
+| `+10..+11` | Public state address |
+| `+12..+13` | BBS session block address |
+| `+14..+15` | Resident end address |
 
 ## API
 
@@ -193,8 +196,8 @@ WFC or poison later local key checks.
 
 ## BBS Session Block
 
-Runtime BASIC modules use the session pointer from `$03F2/$03F3`. The block is
-REMMS-owned state, not an MMS ABI:
+Runtime BASIC modules use the session pointer from resident locator
+`$3EBC/$3EBD`. The block is REMMS-owned state, not an MMS ABI:
 
 | Offset | Meaning |
 | --- | --- |

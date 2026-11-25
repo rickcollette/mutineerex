@@ -38,7 +38,7 @@ D1:eosauto.bat
 `REMMS.COM` publishes REMMS 1.10 and session contract 9. `WFC.COM` then:
 
 1. loads `D1:BBS.CFG` and rejects every tag except `MUTINREX CFG 1`;
-2. discovers REMMS through `$03E8-$03F7`;
+2. discovers REMMS through the protected `RLOC` record at `$3EB0-$3EBF`;
 3. checks EOS `HATABS` for an installed R: handler;
 4. installs the REMMS E:/R: wrappers only when R: exists;
 5. opens E: and K:, reads `SYSTEM.MET`, and draws `WFC.ATA`;
@@ -193,11 +193,11 @@ watchpoints, REMMS trace symbols, or the native adapter addresses instead.
 | `$0300-$030B` | device control block (`DCB`) |
 | `$031A-$0339` | device handler table (`HATABS`), twelve 3-byte entries |
 | `$0340-$03BF` | eight 16-byte IOCBs |
-| `$03E8-$03F7` | REMMS discovery record |
 | `$1E00-$1E3B` | REMMS public API jump table |
 | `$1E60-$1E9F` | REMMS public state block |
 | `$1EB0-$200F` | REMMS session block, contract version 9 |
-| `$3EAB` | first byte after the current REMMS resident allocation (`REMMS_END`) |
+| `$3EB0-$3EBF` | REMMS protected `RLOC` discovery record |
+| `$3EC0` | first byte after the current REMMS resident allocation (`REMMS_END`) |
 | `$A000-$BFFF` | mapped 8 KiB EOS cartridge bank |
 | `$D01F` | `CONSOL` hardware register |
 | `$D40B` | ANTIC `VCOUNT` |
@@ -237,7 +237,7 @@ At WFC, inspect the following in one debugger stop:
 009C L2   exBASIC BASIC_TOP
 02E5 L4   OS MEMTOP and MEMLO
 031A L36  HATABS; an installed backend must have one R entry
-03E8 L16  REMMS discovery record
+3EB0 L16  REMMS protected locator
 1E60 L64  REMMS public state, including installed/open/error fields
 1EB0 L352 session contract 9
 7F70 L2   WFC Ready

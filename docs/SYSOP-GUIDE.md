@@ -161,17 +161,20 @@ sysop are forced to level 9.
 | 7 | Download chunk | 1024 bytes | Bytes read from the disk at a time during a download |
 | 8 | XMODEM buffer | 8 blocks | Blocks of 128 bytes received before they are written to the disk during an XMODEM upload |
 | 9 | Users/callers drive | `D1:` | `SYSTEM.MET`, `USERS.DAT`, `CALLERS.DAT` |
-| 10 | Messages drive | `D1:` | `MESSAGE.DIL`, `MESSAGE.IIL`, `MESSAGE.MIL` bases |
+| 10 | Default messages path | `D1:` | Default for new bases and fallback for legacy boards without `AREAS.CFG` |
 | 11 | Text screens drive | `D1:` | Paired `.TXT` and `.ATA` versions of `WELC`, `BULL`, `FUNC`, `HELP`, `MESGM`, `FILEM`, `NEWU` |
-| 12 | Downloads drive | `D1:` | Controlled `NAME.CTL` files |
+| 12 | Downloads catalog/default | `D1:` | Central `FILES.DAT`, default file-area paths, and legacy fallback |
 | 13 | Modem setup | EXISTING R: / NONE | On SDX, 850 + MODEM selects RHND850 for an Atari 850 with an attached modem such as WiModem232/32. R-VERTER FULL + MODEM means DTR/carrier wiring; R-VERTER 2-WIRE + MODEM means RX/TX only; FUJINET means the N: TCP server. EXISTING R: / NONE means a handler is already loaded, or local-only use. Cold-restart after changing this setting. |
 | 14 | Start the BBS | ON | The start-up batch starts the BBS, with the date and time of the EOS clock |
 | 15 | Start with X | OFF | Direct start fits because the BBS uses field-sized strings. Turn this on to switch the EOS cartridge off and give the message/file buffer 8 KB more room. |
 | 16 | Clock source | MANUAL | MANUAL asks at every BBS start; EOS/JIFFY trusts the current volatile clock; APETIME asks an APE-family SIO host; R-TIME 8 uses a persistent hardware/emulated RTC. |
 | 17 | RAM cache | OFF | Uses the platform RAM disk and copies the individually selected modules/assets during startup. EOS records `O:` targets; SDX records `DO:` CIO targets while its shell copies to `O:`. Altirra 1088K is verified. Cold-restart after saving. Database and download files remain on their configured disk drives. |
 
-A drive is written like `D1:` or `D2:`; a folder of the DOS can be given
-too, ending with `>` or `\`, for example `D1:>BBS>`.
+A storage path is written like `D1:` or `D2:`. Folders use uppercase 8.3
+components, for example `D1:BBS>MESSAGES>`. CONFIG accepts `>` or `\`,
+normalizes separators, creates missing components, and rejects wildcards,
+commas, traversal, unsupported devices, unavailable disks, and paths longer
+than 30 characters.
 
 **D** restores defaults, **S** saves settings and startup, and **X** returns
 to CONFIG's main menu. CONFIG itself does not initialize or erase the whole
@@ -185,17 +188,24 @@ before using the other CONFIG managers on those drives.
 ### Message Bases
 
 Each base uses an A–Z ID and a minimum access level from 1 through 9. Add
-asks for its ID, name, description, level and sector allocation. Edit keeps
-the data and messages. Clear deletes every message in the chosen base and
-asks for its new allocation. Remove deletes the base's three files.
+asks for its ID, name, description, level, path and sector allocation. Edit
+also changes the path. CONFIG rebuilds a moved base, verifies its pointers,
+commits `AREAS.CFG`, and only then removes the old three files. The rebuild
+keeps names, access, message numbers, counts, high-number state and allocation
+while compacting killed and superseded bodies. Clear deletes every message in
+the chosen base and asks for its new allocation. Remove deletes the base.
 
 ### File Areas
 
-Copy a file to the configured downloads drive first, then choose **Add
-Copied File**. CONFIG renames it into the controlled `NAME.CTL` convention
-and updates `FILES.DAT`. Edit can change its name, category, type, access
-level and description. Remove deletes both the controlled file and its
-catalog entry.
+**P Edit Area Paths** configures Text, Games, Applications, Tools, Archivers,
+and Unknown independently. CONFIG copies and byte-verifies every payload in a
+moved area, commits the registry, and then deletes the source copies. A
+conflict or copy failure leaves the old registry and files authoritative.
+
+Copy a new file to the downloads default first, then choose **Add Copied
+File**. CONFIG encodes it as `NAME.CTL` and moves it to the area derived from
+its type/category. Edit moves the payload when its classification changes.
+`FILES.DAT` stays on the downloads catalog path.
 
 ### Doors
 
@@ -430,10 +440,9 @@ Messages are numbered from 0001 up; a modified message keeps its number.
 Each `MESSAGE.DIL` is filled from the start and does not grow: the BBS says
 `MESSAGE FILE FULL, NOT SAVED` when there is no room. A killed or
 modified message leaves its old text in the file (only the index
-forgets it). The original 1983 `MESSAGE.COM` compacting utility is not
-ported; the current `MESSAGE.COM` is the live message-base module. Until a
-new compactor is added, when the file is full, run CONFIG and choose I again
-(this erases all messages and the callers list).
+forgets it). Changing the base path or access level in CONFIG performs a
+transactional rebuild and compacts those old bodies without changing active
+message numbers. The current `MESSAGE.COM` remains the live message module.
 
 Each index (`MESSAGE.IIL`) is loaded in memory when used, 40 bytes per
 message; the free memory limits it to a few hundred messages.
@@ -475,7 +484,8 @@ minimum level. Thus `PACMAN.GC1` is a game/COM visible at level 1. Main
 command F opens the file area; its F and D commands hide or reject files
 above the caller's level. The file list starts with the Text Files view;
 file-area command J selects Text Files, Games, Applications, Tools,
-Archivers, or Unknown. Each table row shows the full controlled filename,
+Archivers, or Unknown. Text type is exclusive; other files use their category,
+so a text/tool file appears only under Text. Each table row shows the full controlled filename,
 its category, and a description wrapped for 40 columns.
 
 Descriptions are stored on the downloads drive in `FILES.DAT`, one record
@@ -496,6 +506,7 @@ record automatically.
 |---------|------------|
 | `CAN'T READ D1:SYSTEM.MET, ERROR 170` at the start | Run CONFIG and choose I, or check setting 9 (users/callers drive) |
 | `NO D1:BBS.CFG, USING DEFAULTS` | Run CONFIG and save |
+| `CONFIGURATION ERROR ... IN AREAS.CFG` | Restore a valid `D1:AREAS.CFG` or `D1:AREAS.BAK`. If both are corrupt, run CONFIG offline and correct the area paths. |
 | WFC says `OFFLINE / LOCAL LOGON ONLY` | No R: handler is installed. SELECT starts a local keyboard session. On SDX with an Atari 850, select 850 + MODEM; otherwise choose an appropriate R-VERTER + MODEM setup or FUJINET and cold-restart. Use EXISTING R: / NONE only for a preloaded handler or local-only operation. |
 | exOS reports `File D1:NAME.sys 170` | Native EOSFS names are case-sensitive and DEVICE appends lowercase `.sys`. Use the packaged `RVRFULL.sys`, `RVRTWOW.sys` or `NHAND.sys` name exactly |
 | The modem answers but WFC remains at `RING 1` | Use the current `REMMS.COM` and `WFC.COM`. REMMS requires modem result codes; keep `Q0 V1` in CONFIG item 6 so the modem reports `CONNECT` in text form |
@@ -509,6 +520,7 @@ record automatically.
 | `SYSTEM ERROR --- TRY AGAIN.` | A required `.TXT` or `.ATA` screen is missing or a disk error; the log shows the error and filename |
 | `PRINTER LOG OFF, ERROR 138` | No printer: the log is off until the next start. Set Printer log OFF in CONFIG to stop trying |
 | `ERROR- 19` when loading the BBS | DOS or the R: handler uses memory where the program loads; type `MEM` to see MEMLO, then rebuild with a higher start address (`-S:` option, see MODDING.md) |
+| `REMMS 1.10 / SESSION 9 NOT RESIDENT` immediately after loading a RAM-cached module | Update `REMMS.COM` and every BBS module together. Current modules use the protected resident locator at `$3EB0`. |
 | Very few messages fit, `MESSAGE INDEX FULL` early | The BBS runs with the EOS cartridge on: turn setting 15 (Start with X) on |
 | The BBS asks the date at every start | MANUAL is selected, or the automatic source failed. For APETIME, check the APE/AspeQt/RespeQt SIO connection; for R-TIME 8, add the RTC to the emulator/hardware and cold restart |
 | The date is old after the machine was offline | Do not use EOS/JIFFY, which is volatile. Select MANUAL, APETIME, or R-TIME 8 in CONFIG item 16 and save |

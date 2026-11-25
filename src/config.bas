@@ -5,6 +5,7 @@
 ' message bases, downloadable files and users without reinitializing it.
 
 INCLUDE "settings.bas"
+INCLUDE "areas.bas"
 
 DATA BaudCodes() BYTE = 8, 10, 12, 13, 14, 15
 DATA BaudRates() WORD = 300, 1200, 2400, 4800, 9600, 19200
@@ -12,8 +13,10 @@ DATA BaudRates() WORD = 300, 1200, 2400, 4800, 9600, 19200
 DIM Changed, Choice, Value, Status, Count, K, Found
 DIM MSect, MByte, CSect, CByte, Msgs, HMsg, BaseId, BaseMin, UserLevel
 DIM Blank(124) BYTE
+DIM MoveBuf(124) BYTE
 DIM BasePresent(25) BYTE, BaseLevel(25) BYTE
 
+Status = USR(@BIND_CONFIG_STRINGS)
 InitSettings()
 In$ = "" : F$ = "" : S$ = "" : T$ = ""
 Name$ = "" : Desc$ = "" : City$ = "" : Pass$ = ""
@@ -75,6 +78,7 @@ POKE 82, 2
 END
 
 INCLUDE "config_common.bas"
+INCLUDE "config_areas.bas"
 INCLUDE "config_general.bas"
 INCLUDE "config_messages.bas"
 INCLUDE "config_files.bas"
