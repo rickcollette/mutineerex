@@ -29,7 +29,7 @@ ENDFUNC
 FUNC ShowDoors()
   LOCAL Code, Count
   PRINT #ModemCh,
-  PRINT #ModemCh; ".oO-[ Mutineer-eX 1.0.12 DOORS ]-Oo."
+  PRINT #ModemCh; ".oO-[ Mutineer-eX 1.0.13 DOORS ]-Oo."
   PRINT #ModemCh; ".o  KEY  DOOR                    o."
   PRINT #ModemCh; ".oO----------------------------Oo."
   Code = OpenDoorCatalog()
