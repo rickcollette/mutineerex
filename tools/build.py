@@ -40,12 +40,14 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _TOOL_ROOTS = (
+    os.path.join(ROOT, "tools"),
     r"C:\Program Files\exBASIC Studio Contributors\exBASIC Studio\tools",
     os.path.expandvars(r"%LOCALAPPDATA%\Programs\exBASIC Studio\tools"),
     os.path.expandvars(r"%LOCALAPPDATA%\Programs\exBASIC Studio personal-rick\tools"),
 )
 TOOLS = next((candidate for candidate in _TOOL_ROOTS
-              if os.path.isdir(candidate)), _TOOL_ROOTS[0])
+              if os.path.isfile(os.path.join(candidate, "exbasic", "exbasic.exe"))),
+             _TOOL_ROOTS[0])
 EXBASIC = os.environ.get("EXBASIC", os.path.join(TOOLS, "exbasic", "exbasic.exe"))
 # exOS 0.4 uses native EOSFS v2 ($47) with extent maps and 44-byte directory
 # entries. Keep the former 16 MiB capacity while reproducing the metadata and
@@ -452,6 +454,13 @@ def verify_rdconf_heap():
 
 
 def main():
+    if not os.path.isfile(EXBASIC):
+        sys.exit("exBASIC compiler not found at %s; install exBASIC Studio, "
+                 "extract the standalone compiler into tools/exbasic, or set "
+                 "EXBASIC to exbasic.exe" % EXBASIC)
+    if not os.path.isfile(MADS):
+        sys.exit("MADS assembler not found at %s; restore tools/mads.exe or set "
+                 "MADS to mads.exe" % MADS)
     audit_branding()
     audit_source_versions()
     audit_explicit_console_input()

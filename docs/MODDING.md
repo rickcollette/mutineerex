@@ -28,8 +28,10 @@ The compiler is called as:
 exbasic -t:atari -I:src -I:lib -S:16384 -no-native -g -o build/WFC.XEX src/wfc.bas src/fixed_strings.asm
 ```
 
-`build.py` finds the compiler in the default Studio installation folder and
-uses `tools/mads.exe` for REMMS. Set `EXBASIC` or `MADS` to use other copies.
+`build.py` finds the compiler in `tools/exbasic` or the default Studio
+installation folder and uses `tools/mads.exe` for REMMS. Set `EXBASIC` or
+`MADS` to use other copies. The standalone exBASIC archive can be extracted
+directly into `tools/exbasic` when Studio is not installed.
 The 16 MB ATR is built from scratch as native EOSFS v2 revision `$47`. Its
 boot sectors, 63-entry extent-map header, allocation hint, optimizer and skew
 fields match an image made by exOS 0.4's `FORMAT /QQ`. `build.py` checks those
