@@ -29,7 +29,8 @@ def run(command: list[str]) -> None:
     result = subprocess.run(command, cwd=ROOT)
     if result.returncode:
         raise BuildError(
-            "%s failed with exit code %d" % (command[0], result.returncode)
+            "%s failed with exit code %d"
+            % (subprocess.list2cmdline(command), result.returncode)
         )
 
 
@@ -134,6 +135,10 @@ def main() -> int:
             print("Built and validated " + str(atr.relative_to(ROOT)))
         return 0
     except (BuildError, OSError) as exc:
+        # Report the actual failing command before rollback starts.  build.py's
+        # normal output is intentionally verbose, and previously its rollback
+        # rebuild obscured the test that caused the release to fail.
+        print("build-all: " + str(exc), file=sys.stderr, flush=True)
         for source, contents in source_originals.items():
             try:
                 source.write_bytes(contents)
@@ -152,13 +157,18 @@ def main() -> int:
                 # failed bumped test run has already built the candidate pair,
                 # so regenerate the restored version and remove that failed
                 # candidate from disk/ as part of rollback.
+                print(
+                    "build-all: rebuilding %s disk images after rollback"
+                    % original,
+                    file=sys.stderr,
+                    flush=True,
+                )
                 result = subprocess.run(
                     [sys.executable, "tools/build.py"], cwd=ROOT
                 )
                 if result.returncode:
                     print("Could not restore the %s disk images" % original,
                           file=sys.stderr)
-        print("build-all: " + str(exc), file=sys.stderr)
         return 1
 
 
