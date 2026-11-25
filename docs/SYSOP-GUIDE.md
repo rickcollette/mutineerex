@@ -288,9 +288,10 @@ SpartaDOS X installs its native RAM disk as shell drive `O:`; exBASIC/CIO uses
 the equivalent `DO:` path. `RAMCACHE.CFG` records that destination separately
 for every selected file, so the picker controls whether each module or asset
 loads from RAM (`[R]`) or its configured disk (`[D]`). The generated batch
-first pauses for five seconds so BREAK can leave the sysop at the SDX prompt.
-When caching is enabled, `FORMAT /QQ O: MUTINREX` prepares O: non-interactively
-before any selected files are copied.
+opens a five-second maintenance window. Press any key to consume it and leave
+the sysop at the SDX prompt; with no input, startup continues into the BBS.
+When caching is enabled, SDX's RAM-disk driver provides `O:`. AUTOEXEC uses it
+directly without formatting it, then copies the selected files.
 
 For Altirra, add an **R-Time 8** device to the active machine's device tree,
 select R-TIME 8 in CONFIG item 16, save, and perform a cold reset. Merely

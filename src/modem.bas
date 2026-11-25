@@ -241,9 +241,9 @@ FUNC SendBuf(Help)
   IF Help AND NOT XMode THEN PRINT #ModemCh; CtrlMsg$
   PRINT #ModemCh,
   IF RawText
-    ' NAME.TXT is already ASCII: bypass the R: ATASCII translation.
+    ' NAME.TXT is ASCII; mode 33 keeps it raw and honors text line feeds.
     RawText = 0
-    AMode = 32
+    AMode = 33
     OpenModem()
     C = SendRaw()
     AMode = 0

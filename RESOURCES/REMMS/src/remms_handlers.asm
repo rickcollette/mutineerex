@@ -403,9 +403,22 @@ remms_e_put_remote_online
         lda remms_io_byte
         sta remms_eol_save
         lda remms_session_block+REMMS_S_AMODE
+        beq remms_e_put_remote_translate
+        ; Mode 33 is raw ASCII text. Unlike binary/raw mode 32, it still
+        ; honors LMODE for the CR line endings stored in .TXT screens.
+        cmp #33
         bne remms_e_put_remote_raw
         lda remms_eol_save
+        cmp #13
+        beq remms_e_put_remote_eol
+        bne remms_e_put_remote_raw
+remms_e_put_remote_translate
+        lda remms_eol_save
         cmp #EOL
+        beq remms_e_put_remote_eol
+        ; exBASIC under SDX emits an ASCII CR for PRINT's channel newline.
+        ; Treat both forms as a logical EOL so LMODE can append the LF.
+        cmp #13
         beq remms_e_put_remote_eol
         cmp #$7D
         beq remms_e_put_remote_clear

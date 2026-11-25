@@ -535,11 +535,11 @@ FUNC WriteSdxStartup()
   Code = ERR()
   IF Code <> 1 THEN CLOSE #1 : RETURN Code
   PRINT #1; "ECHO MUTINEER-EX STARTS IN 5 SECONDS"
-  PRINT #1; "ECHO PRESS BREAK FOR THE SDX PROMPT"
-  PRINT #1; "PAUSE 5"
+  PRINT #1; "ECHO PRESS ANY KEY TO DROP TO DOS"
+  PRINT #1; "SETERRNO 0"
+  PRINT #1; "D1:BOOTWAIT.COM"
+  PRINT #1; "IF NOT ERROR 170"
   IF AutoStart AND StartOption(2)
-    ' SDX /QQ prepares O: without the formatter menu or clear-disk prompt.
-    PRINT #1; "FORMAT /QQ O: MUTINREX"
     CLOSE #2
     OPEN #2, 4, 0, "D1:RAMCACHE.CFG"
     Code = ERR()
@@ -609,6 +609,7 @@ FUNC WriteSdxStartup()
       PRINT #1; "D1:WFC.COM"
     ENDIF
   ENDIF
+  PRINT #1; "FI"
   Code = ERR()
   CLOSE #1
   IF Code = 1 THEN Code = ERR()

@@ -2,9 +2,9 @@
 
 FUNC LoginCaller()
   LOCAL C, User
+  OpenModem()
+  PRINT #ModemCh; "HIT <RETURN> ";
   DO
-    OpenModem()
-    PRINT #ModemCh; "HIT <RETURN> ";
     C = GetChr()
     IF Lost THEN RETURN 0
     IF C = 155

@@ -123,9 +123,10 @@ def main() -> int:
     startup = by_name.get("/autoexec.bat", b"").decode("latin-1", errors="replace").upper()
     expected = (
         "ECHO MUTINEER-EX STARTS IN 5 SECONDS",
-        "ECHO PRESS BREAK FOR THE SDX PROMPT",
-        "PAUSE 5",
-        "FORMAT /QQ O: MUTINREX",
+        "ECHO PRESS ANY KEY TO DROP TO DOS",
+        "SETERRNO 0",
+        "D1:BOOTWAIT.COM",
+        "IF NOT ERROR 170",
         "ECHO COPYING D1:WFC.COM -> RAMDISK:WFC.COM",
         "COPY D1:WFC.COM O:WFC.COM",
         "D1:RHND850.COM",

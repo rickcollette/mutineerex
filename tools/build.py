@@ -275,6 +275,7 @@ DRIVER_FILES = [
     ("build/REMMS.COM", "remms.com"),
     ("build/TDAPE.COM", "tdape.com"),
 ]
+SDX_ONLY_FILES = [("build/BOOTWAIT.COM", "BOOTWAIT.COM")]
 SDX_DRIVER_RENAMES = {
     "RVRFULL.sys": "RVRFULL.COM",
     "RVRTWOW.sys": "RVRTWOW.COM",
@@ -405,6 +406,7 @@ def compile_remms():
              ("RVR_FULL=0",))
     assemble("RESOURCES/REMMS/nhand/nhand.asm", "build/NHAND.SYS")
     assemble("RESOURCES/REMMS/td/tdape.asm", "build/TDAPE.COM")
+    assemble("src/bootwait.asm", "build/BOOTWAIT.COM")
 
 
 def verify_remms_locator():
@@ -608,6 +610,9 @@ def main():
         sdx_contents[SDX_DRIVER_RENAMES.get(name, name).upper()] = data
     sdx_contents["RAMCACHE.CFG"] = ramcache_default("DO:")
     sdx_contents[SDX_PLATFORM_MARKER[0]] = SDX_PLATFORM_MARKER[1]
+    for source_name, disk_name in SDX_ONLY_FILES:
+        with open(path(source_name), "rb") as source:
+            sdx_contents[disk_name] = source.read()
     sdx_atr = path(SDX_ATR_RELATIVE_PATH)
     print("> " + SDX_ATR_RELATIVE_PATH)
     sdfs.build(sdx_atr, DISK_SECTORS, DISK_SECTOR_SIZE, sdx_contents,

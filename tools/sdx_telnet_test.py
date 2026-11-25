@@ -60,9 +60,9 @@ class Wire:
         self.sock = sock
         self.data = bytearray()
 
-    def expect(self, marker: bytes, timeout: float) -> None:
+    def expect(self, marker: bytes, timeout: float, start: int = 0) -> None:
         deadline = time.monotonic() + timeout
-        while marker.lower() not in self.data.lower():
+        while marker.lower() not in self.data[start:].lower():
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError(
@@ -215,7 +215,6 @@ def make_case(target: Path) -> None:
         files["eossys.sys"] = atascii_lines(*system)
         startup = ["SET PATH=CAR:;D1:"]
         if USE_RAMDISK:
-            startup.append("FORMAT /QQ O:")
             startup.extend(f"cp D1:{name}.com O:{name}.com" for name in PROGRAMS)
             startup.extend(
                 f"cp D1:{name}.{extension} O:{name}.{extension}"
@@ -370,8 +369,17 @@ def main() -> int:
                     raise
                 sock = connect(timeout=ready_deadline - time.monotonic())
         with sock:
+            # Real terminals may send negotiation bytes, escape sequences, or
+            # an accidental key before RETURN.  Terminal detection must ignore
+            # them without repainting and flooding the caller's screen.
+            wire.sock.sendall(b"xyz")
             wire.send_line("")
             wire.expect(b"Do you require Line Feeds", 30.0)
+            prompt_count = wire.data.upper().count(b"HIT <RETURN>")
+            if prompt_count != 1:
+                failures.append(
+                    f"terminal detection printed HIT <RETURN> {prompt_count} times"
+                )
             wire.send_line("N")
             wire.expect(b"Enter your Name >", 30.0)
             wire.send_line(CALLER_NAME)
@@ -386,6 +394,18 @@ def main() -> int:
             wire.expect(b"Type it again >", 45.0)
             wire.send_line("T123")
             wire.expect(b"A,B,C,D,F,G,H,L,M,T,W,X,Y,Z,? >", 60.0)
+            toggle_start = len(wire.data)
+            wire.send_line("L")
+            wire.expect(b"LINE-FEED ON\r\n", 30.0, toggle_start)
+            wire.expect(
+                b"A,B,C,D,F,G,H,L,M,T,W,X,Y,Z,? >", 30.0, toggle_start
+            )
+            menu_start = len(wire.data)
+            wire.send_line("?")
+            wire.expect(b"MAIN MENU       o.\r\n", 30.0, menu_start)
+            wire.expect(
+                b"A,B,C,D,F,G,H,L,M,T,W,X,Y,Z,? >", 60.0, menu_start
+            )
             wire.send_line("M")
             wire.expect(b"Preparing MESSAGE", 45.0)
             source = (b"RAMDISK:message.com" if USE_RAMDISK

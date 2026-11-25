@@ -39,9 +39,10 @@ every selected `RAMCACHE.CFG` source has an explicit `DO:` runtime target.
 AUTOEXEC copies it to shell drive `O:`, displays the copy, and starts the
 selected `.COM` backend, REMMS, and WFC from their configured disk or RAM
 locations. Before loading anything, the generated batch displays a five-second
-maintenance window; press BREAK to stop at the SDX prompt. With RAM cache
-enabled it then runs `FORMAT /QQ O: MUTINREX`, which prepares O: without the
-interactive formatter or clear-disk confirmation, before copying the selected files.
+maintenance window. Press any key during that window to consume the key and
+drop to the SDX prompt; otherwise startup continues into the BBS. When RAM
+cache is enabled, SDX's RAM-disk driver provides `O:`. AUTOEXEC uses that
+volume directly and does not format it before copying the selected files.
 
 Build both platform images without changing the current product version:
 

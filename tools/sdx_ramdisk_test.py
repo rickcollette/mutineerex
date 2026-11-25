@@ -27,18 +27,22 @@ PROGRAMS = CORE + ("bjack", "slots")
 SCREENS = ("WFC", "WELC", "BULL", "FUNC", "HELP", "MESGM", "FILEM", "NEWU")
 
 
-def make_case(target: Path) -> None:
+def release_files() -> dict[str, bytes]:
     version = (ROOT / "VERSION").read_text(encoding="ascii").strip()
     source = ROOT / "disk" / f"mutinrex-sdx-v{version}.atr"
     volume = sdfs.Volume(str(source))
     entries = volume.check()
     if volume.errors:
         raise RuntimeError("release ATR is invalid: " + "; ".join(volume.errors))
-    files = {
+    return {
         name.lstrip("/"): entry["data"]
         for name, entry in entries
         if not entry["status"] & sdfs.ST_DIR
     }
+
+
+def make_case(target: Path) -> None:
+    files = release_files()
     files["BBS.CFG"] = atascii_lines(
         "MUTINREX CFG 1", "SYSOP", "0", "1", "5", "15",
         "ATE0 Q0 V1 S2=255 S4=24 S7=15", "1024", "8",
@@ -49,9 +53,10 @@ def make_case(target: Path) -> None:
     files["BBSTIME.TXT"] = atascii_lines("12:00:00")
     startup: list[str] = [
         "ECHO MUTINEER-EX STARTS IN 5 SECONDS",
-        "ECHO PRESS BREAK FOR THE SDX PROMPT",
-        "PAUSE 5",
-        "FORMAT /QQ O: MUTINREX",
+        "ECHO PRESS ANY KEY TO DROP TO DOS",
+        "SETERRNO 0",
+        "D1:BOOTWAIT.COM",
+        "IF NOT ERROR 170",
     ]
     startup.extend(
         command
@@ -74,9 +79,88 @@ def make_case(target: Path) -> None:
     # A successful run cannot be using an implicit D1 fallback.
     startup.extend(f"RENAME D1:{name}.COM {name}.BAK" for name in CORE)
     startup.extend(("D1:REMMS.COM", "O:WFC.COM"))
+    startup.append("FI")
     files["AUTOEXEC.BAT"] = atascii_lines(*startup)
     sdfs.build(str(target), 65535, 256, files,
                volname="MUTINREX", eosfs=False)
+
+
+def run_key_gate_case(work: Path) -> list[str]:
+    """Press a normal key and prove AUTOEXEC stops at a clean SDX prompt."""
+    failures: list[str] = []
+    atr = work / "boot-gate.atr"
+    profile = work / "boot-gate.ini"
+    log = work / "boot-gate.log"
+    files = release_files()
+    files["AUTOEXEC.BAT"] = atascii_lines(
+        "ECHO MUTINEER-EX STARTS IN 5 SECONDS",
+        "ECHO PRESS ANY KEY TO DROP TO DOS",
+        "SETERRNO 0",
+        "D1:BOOTWAIT.COM",
+        "IF NOT ERROR 170",
+        "ECHO BOOT GATE CONTINUED",
+        "FI",
+    )
+    sdfs.build(str(atr), 65535, 256, files,
+               volname="MUTINREX", eosfs=False)
+    run_altirra_850.write_profile(profile, 7081, inbound=False)
+    command = [
+        str(run_altirra_850.ALTIRRA.resolve()),
+        "/portablealt:" + str(profile.resolve()),
+        "/cart", str(SDX_CART.resolve()),
+        "/debug",
+        "/debugcmd", ".logopen " + str(log.resolve()),
+        "/debugcmd", "g",
+        "/bootrw", str(atr.resolve()),
+    ]
+    proc = None
+    try:
+        proc = run_altirra_850.launch_isolated(command, run_altirra_850.ALTIRRA.parent)
+        deadline = time.monotonic() + 90
+        while time.monotonic() < deadline:
+            time.sleep(0.25)
+            halt_execution(proc)
+            _, screen = read_screen(proc)
+            screen_text = "\n".join(
+                screen_to_text(screen[offset:offset + 40])
+                for offset in range(0, len(screen), 40)
+            )
+            if "PRESS ANY KEY TO DROP TO DOS" in screen_text:
+                # Inactive Windows key messages do not reliably reach CH.
+                # Inject Atari's L key code into the normal keyboard latch.
+                proc.debugger_command("eb $02FC 00")
+                proc.debugger_command("g")
+                break
+            proc.debugger_command("g")
+        else:
+            raise RuntimeError("SDX startup key prompt was not displayed")
+
+        time.sleep(2.0)
+        halt_execution(proc)
+        _, screen = read_screen(proc)
+        screen_text = "\n".join(
+            screen_to_text(screen[offset:offset + 40])
+            for offset in range(0, len(screen), 40)
+        )
+        if "BOOT GATE CONTINUED" in screen_text:
+            failures.append("ordinary key did not stop AUTOEXEC.BAT")
+        if "D1:" not in screen_text:
+            proc.debugger_command("r")
+            time.sleep(0.2)
+            debugger_tail = " | ".join(proc.debugger_text().splitlines()[-8:])
+            failures.append(
+                "ordinary key did not return to the SDX prompt: "
+                + " | ".join(x.strip() for x in screen_text.splitlines() if x.strip())
+                + " :: " + debugger_tail
+            )
+        if read_memory(proc, 0x02FC, 1)[0] != 0xFF:
+            failures.append("startup key remained in the Atari keyboard latch")
+    except Exception as exc:
+        failures.append(str(exc))
+    finally:
+        if proc is not None:
+            stop_process_tree(proc)
+    return failures
 
 
 def main() -> int:
@@ -84,6 +168,7 @@ def main() -> int:
     symbols = labels(ROOT / "build" / "WFC.lbl")
     work = ROOT / "tmp" / "mutinrex-sdx-ramdisk-test"
     work.mkdir(parents=True, exist_ok=True)
+    gate_failures = run_key_gate_case(work)
     atr = work / "ramdisk.atr"
     profile = work / "ramdisk.ini"
     log = work / "ramdisk.log"
@@ -106,7 +191,7 @@ def main() -> int:
         "/bootrw", str(atr.resolve()),
     ]
     proc = None
-    failures: list[str] = []
+    failures: list[str] = list(gate_failures)
     try:
         proc = run_altirra_850.launch_isolated(command, run_altirra_850.ALTIRRA.parent)
         deadline = time.monotonic() + 240
