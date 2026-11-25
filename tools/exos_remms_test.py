@@ -21,7 +21,11 @@ sys.path.insert(0, str(MUTINEER / "tools"))
 
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
-from altirra_debug import read_memory, read_screen  # noqa: E402
+from altirra_debug import (  # noqa: E402
+    read_memory,
+    read_screen,
+    send_debugger_command,
+)
 from run_wfc_dashboard_test import screen_to_text  # type: ignore  # noqa: E402
 
 import sdfs  # noqa: E402
@@ -107,10 +111,12 @@ def run_case(driver: str, work: Path, index: int) -> list[str]:
         install = symbols["REMMS_INSTALL"]
         stub = bytes((0x20, install & 0xFF, install >> 8,
                       0x4C, (TEST_STUB + 3) & 0xFF, (TEST_STUB + 3) >> 8))
-        proc.debugger_command(
-            f"eb ${TEST_STUB:04X} " + " ".join(f"{value:02X}" for value in stub))
-        proc.debugger_command(f"bp ${TEST_STUB + 3:04X}")
-        proc.debugger_command(f"r pc ${TEST_STUB:04X}")
+        send_debugger_command(
+            proc,
+            f"eb ${TEST_STUB:04X} " + " ".join(f"{value:02X}" for value in stub),
+        )
+        send_debugger_command(proc, f"bp ${TEST_STUB + 3:04X}")
+        send_debugger_command(proc, f"r pc ${TEST_STUB:04X}")
         proc.debugger_command("g")
         if not proc.wait_for_debugger_text(f"{TEST_STUB + 3:04X}:", 20):
             raise RuntimeError("REMMS API install did not return")

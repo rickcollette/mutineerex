@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reliable read-only Altirra debugger memory access for acceptance tests."""
+"""Reliable Altirra debugger control and memory access for acceptance tests."""
 from __future__ import annotations
 
 import time
@@ -36,6 +36,27 @@ def halt_execution(proc, attempts: int = 3, timeout: float = 3.0) -> None:
     raise RuntimeError(
         "Altirra did not enter debugger halt state: " + repr(titles)
     )
+
+
+def send_debugger_command(proc, command: str, timeout: float = 3.0) -> None:
+    """Submit one debugger command and wait until Altirra consumes its text."""
+    marker = "Altirra> " + command
+    prior = proc.debugger_text().count(marker)
+    proc.debugger_command(command)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if proc.debugger_text().count(marker) > prior:
+            # The command edit is clear once the console echoes the command.
+            # A short settle prevents the next WM_SETTEXT from racing the
+            # current command's parser on a busy private desktop.
+            time.sleep(0.05)
+            return
+        if proc.poll() is not None:
+            raise RuntimeError(
+                "Altirra exited before debugger command completed: " + command
+            )
+        time.sleep(0.02)
+    raise RuntimeError("Altirra did not accept debugger command: " + command)
 
 
 def read_memory(proc, address: int, length: int, attempts: int = 3) -> bytes:

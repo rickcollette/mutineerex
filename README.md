@@ -99,11 +99,11 @@ The script increments the patch version by default, synchronizes maintained
 version banners, rebuilds and checks both images, runs the complete EOS and SDX
 acceptance matrix, commits the version change, creates `v<VERSION>`, atomically
 pushes the current branch and tag to `origin`, and publishes both ATRs plus
-`SHA256SUMS.txt` on GitHub. Use `--bump minor`, `--bump major`, or `--bump none`
-when appropriate. Use `--dry-run` to perform the local build/package, print the
-remote commands, and restore the source version afterward. The script refuses
-dirty trees, conflicting tags, non-fast-forward branches, and existing releases
-rather than overwriting them.
+`SHA256SUMS.txt` on GitHub. Every release advances the version; use
+`--bump minor` or `--bump major` when appropriate. Use `--dry-run` to perform
+the local build/package, print the remote commands, and restore the source
+version afterward. The script refuses dirty trees, conflicting tags,
+non-fast-forward branches, and existing releases rather than overwriting them.
 
 ## Status
 

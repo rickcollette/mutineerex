@@ -16,7 +16,12 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
-from altirra_debug import halt_execution, read_memory, read_screen  # noqa: E402
+from altirra_debug import (  # noqa: E402
+    halt_execution,
+    read_memory,
+    read_screen,
+    send_debugger_command,
+)
 
 from exos_bbs_test import atascii_lines, labels, screen_to_text  # noqa: E402
 import sdfs  # noqa: E402
@@ -128,7 +133,7 @@ def run_key_gate_case(work: Path) -> list[str]:
             if "PRESS ANY KEY TO DROP TO DOS" in screen_text:
                 # Inactive Windows key messages do not reliably reach CH.
                 # Inject Atari's L key code into the normal keyboard latch.
-                proc.debugger_command("eb $02FC 00")
+                send_debugger_command(proc, "eb $02FC 00")
                 proc.debugger_command("g")
                 break
             proc.debugger_command("g")

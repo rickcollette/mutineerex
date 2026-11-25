@@ -7,13 +7,14 @@ Typical use from a clean branch containing the changes to publish:
 
 The default increments VERSION's patch component, synchronizes source banners,
 runs both platform suites, creates a release commit and v<VERSION> tag, pushes
-the branch and tag atomically, and uploads both ATRs plus SHA256SUMS.txt.  Use
---bump none to publish the already-declared VERSION.  Use --dry-run to perform
-the build/package validation and print mutations while restoring source files.
+the branch and tag atomically, and uploads both ATRs plus SHA256SUMS.txt. Use
+--dry-run to validate the next version and print mutations while restoring the
+source files afterward.
 """
 from __future__ import annotations
 
 import argparse
+from collections import deque
 import hashlib
 import os
 import re
@@ -61,6 +62,47 @@ def run(args: list[str], *, capture: bool = False,
     return result
 
 
+def run_logged(args: list[str], log_path: Path) -> None:
+    """Stream a long command to the console and retain its complete output."""
+    print("+ " + display_command(args), flush=True)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    tail: deque[str] = deque(maxlen=200)
+    with log_path.open("w", encoding="utf-8", newline="\n") as log:
+        process = subprocess.Popen(
+            args,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+        )
+        assert process.stdout is not None
+        for line in process.stdout:
+            print(line, end="", flush=True)
+            log.write(line)
+            log.flush()
+            if line.strip():
+                tail.append(line.rstrip())
+        returncode = process.wait()
+    if returncode:
+        diagnostics = [
+            line for line in tail
+            if line.startswith("build-all:") or ": FAIL" in line
+        ]
+        detail = ""
+        if diagnostics:
+            detail = "\n" + "\n".join(diagnostics[-5:])
+        raise ReleaseError(
+            "%s failed with exit code %d%s\nFull build log: %s"
+            % (
+                display_command(args),
+                returncode,
+                detail,
+                log_path.relative_to(ROOT),
+            )
+        )
+
+
 def output(args: list[str]) -> str:
     return run(args, capture=True).stdout.strip()
 
@@ -73,8 +115,6 @@ def read_version() -> str:
 
 
 def next_version(version: str, part: str) -> str:
-    if part == "none":
-        return version
     major, minor, patch = (int(value) for value in version.split("."))
     if part == "major":
         return "%d.0.0" % (major + 1)
@@ -205,7 +245,7 @@ def build_and_test(version: str, bump: str,
     command = [sys.executable, "tools/build_all.py", "--bump", bump]
     if skip_runtime_tests:
         command.append("--skip-runtime-tests")
-    run(command)
+    run_logged(command, ROOT / "release" / ("v" + version) / "build.log")
     actual = read_version()
     if actual != version:
         raise ReleaseError(
@@ -420,7 +460,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--bump",
-        choices=("major", "minor", "patch", "none"),
+        choices=("major", "minor", "patch"),
         default="patch",
         help="version component to increment (default: patch)",
     )
