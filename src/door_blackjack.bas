@@ -58,7 +58,7 @@ ENDFUNC
 FUNC ShowBlackjackWelcome()
   PRINT #ModemCh,
   PRINT #ModemCh; "+------------------------------------+"
-  PRINT #ModemCh; "|    Mutineer-eX 1.0.11 BLACKJACK    |"
+  PRINT #ModemCh; "|    Mutineer-eX 1.0.12 BLACKJACK    |"
   PRINT #ModemCh; "+------------------------------------+"
   PRINT #ModemCh; "BLACKJACK PAYS 3 TO 2."
   PRINT #ModemCh; "DEALER STANDS ON 17."

@@ -1,5 +1,5 @@
  ------- NEW USER INFORMATION ------
- Mutineer-eX 1.0.11 runs on an Atari
+ Mutineer-eX 1.0.12 runs on an Atari
  computer, so some functions differ
  from other bulletin board systems.
  The 'A' Command toggles the ATARI

@@ -1,4 +1,4 @@
-     .oO-[ Mutineer-eX 1.0.11 ]-Oo.
+     .oO-[ Mutineer-eX 1.0.12 ]-Oo.
      .o        MAIN MENU       o.
      .oO----------------------Oo.
 
