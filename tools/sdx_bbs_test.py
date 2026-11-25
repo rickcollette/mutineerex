@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
-from altirra_debug import read_memory, read_screen  # noqa: E402
+from altirra_debug import halt_execution, read_memory, read_screen  # noqa: E402
 
 from exos_bbs_test import (  # noqa: E402
     alt_number,
@@ -109,8 +109,7 @@ def run_case(driver: str, driver_number: int, work: Path, index: int,
         else:
             tail = " | ".join(proc.debugger_text().splitlines()[-20:])
             raise RuntimeError("WFC did not reach its ready state: " + tail)
-        proc.debugger_run_break()
-        time.sleep(0.8)
+        halt_execution(proc)
         _, screen = read_screen(proc)
         screen_text = "\n".join(
             screen_to_text(screen[offset:offset + 40])
@@ -167,8 +166,7 @@ def run_manual_clock_case(work: Path, index: int,
         screen_text = ""
         while time.monotonic() < deadline:
             time.sleep(1)
-            proc.debugger_run_break()
-            time.sleep(0.25)
+            halt_execution(proc)
             _, screen = read_screen(proc)
             screen_text = "\n".join(
                 screen_to_text(screen[offset:offset + 40])

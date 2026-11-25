@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
-from altirra_debug import read_memory, read_screen  # noqa: E402
+from altirra_debug import halt_execution, read_memory, read_screen  # noqa: E402
 
 from exos_bbs_test import atascii_lines, labels, screen_to_text  # noqa: E402
 import sdfs  # noqa: E402
@@ -110,8 +110,7 @@ def main() -> int:
         else:
             tail = " | ".join(proc.debugger_text().splitlines()[-20:])
             raise RuntimeError("RAM-cached WFC did not start: " + tail)
-        proc.debugger_run_break()
-        time.sleep(0.8)
+        halt_execution(proc)
         # exBASIC stores a byte-array pointer in the two-byte variable slot;
         # the elements themselves are not inline beside the symbol.
         start_option = int.from_bytes(

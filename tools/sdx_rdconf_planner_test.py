@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
-from altirra_debug import read_screen  # noqa: E402
+from altirra_debug import halt_execution, read_screen  # noqa: E402
 from exos_bbs_test import atascii_lines, screen_to_text  # noqa: E402
 from sdx_rdconf_test import make_case  # noqa: E402
 import sdfs  # noqa: E402
@@ -74,8 +74,7 @@ def main() -> int:
         time.sleep(1.0)
         deadline = time.monotonic() + 180
         while time.monotonic() < deadline:
-            proc.debugger_run_break()
-            time.sleep(0.35)
+            halt_execution(proc)
             _, screen = read_screen(proc)
             screen_text = "\n".join(
                 screen_to_text(screen[offset:offset + 40])

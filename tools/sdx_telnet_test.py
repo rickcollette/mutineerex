@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
-from altirra_debug import read_memory, read_screen  # noqa: E402
+from altirra_debug import halt_execution, read_memory, read_screen  # noqa: E402
 
 from exos_bbs_test import atascii_lines, screen_to_text  # noqa: E402
 import sdfs  # noqa: E402
@@ -405,8 +405,7 @@ def main() -> int:
         failures.append(f"{type(exc).__name__}: {exc}")
         if proc is not None:
             try:
-                proc.debugger_run_break()
-                time.sleep(0.5)
+                halt_execution(proc)
                 _, screen = read_screen(proc)
                 screen_text = "\n".join(
                     screen_to_text(screen[offset:offset + 40])

@@ -22,6 +22,7 @@ sys.path.insert(0, str(MUTINEER / "tools"))
 import run_altirra_850  # type: ignore  # noqa: E402
 from run_mutineer_telnet_test import stop_process_tree  # type: ignore  # noqa: E402
 from altirra_debug import (  # noqa: E402
+    halt_execution,
     read_memory as alt_read_memory,
     read_screen as alt_read_screen,
 )
@@ -224,8 +225,7 @@ def run_driver_case(driver: str, driver_number: int, work: Path, index: int,
         else:
             tail = " | ".join(proc.debugger_text().splitlines()[-20:])
             raise RuntimeError("WFC did not reach its ready state: " + tail)
-        proc.debugger_run_break()
-        time.sleep(0.8)
+        halt_execution(proc)
         _, screen = alt_read_screen(proc)
         screen_text = "\n".join(
             screen_to_text(screen[offset:offset + 40])

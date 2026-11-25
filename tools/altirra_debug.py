@@ -7,6 +7,37 @@ import time
 from run_wfc_dashboard_test import read_memory as _read_memory  # type: ignore
 
 
+def _stopped(proc) -> bool:
+    return any(
+        window["class"] == "AltirraMainWindow"
+        and "[stopped]" in str(window["title"]).casefold()
+        for window in proc.window_snapshot()
+    )
+
+
+def halt_execution(proc, attempts: int = 3, timeout: float = 3.0) -> None:
+    """Halt Altirra and verify that the asynchronous F8 command landed."""
+    if _stopped(proc):
+        return
+    for _attempt in range(attempts):
+        proc.debugger_run_break()
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if _stopped(proc):
+                return
+            if proc.poll() is not None:
+                raise RuntimeError("Altirra exited before debugger halt")
+            time.sleep(0.05)
+    titles = [
+        str(window["title"])
+        for window in proc.window_snapshot()
+        if window["class"] == "AltirraMainWindow"
+    ]
+    raise RuntimeError(
+        "Altirra did not enter debugger halt state: " + repr(titles)
+    )
+
+
 def read_memory(proc, address: int, length: int, attempts: int = 3) -> bytes:
     """Retry debugger-console synchronization failures, not test assertions."""
     for attempt in range(1, attempts + 1):
