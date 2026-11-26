@@ -232,41 +232,6 @@ FUNC AddBase()
   PauseForKey()
 ENDFUNC
 
-FUNC RenameBaseFile(Role, OldLevel, NewLevel)
-  BaseMin = OldLevel
-  MakeBasePath(Role)
-  S$ = F$
-  S$ =+ ",MESSAGE."
-  S$ =+ CHR$(Role)
-  S$ =+ CHR$(65 + BaseId)
-  S$ =+ STR$(NewLevel)
-  XIO 32, #1, 0, 0, S$
-  Status = ERR()
-ENDFUNC
-
-FUNC RenameBase(OldLevel, NewLevel)
-  RenameBaseFile(68, OldLevel, NewLevel)
-  IF Status <> 1 THEN BaseMin = OldLevel : RETURN
-  RenameBaseFile(73, OldLevel, NewLevel)
-  IF Status <> 1
-    Count = Status
-    RenameBaseFile(68, NewLevel, OldLevel)
-    Status = Count
-    BaseMin = OldLevel
-    RETURN
-  ENDIF
-  RenameBaseFile(77, OldLevel, NewLevel)
-  IF Status <> 1
-    Count = Status
-    RenameBaseFile(73, NewLevel, OldLevel)
-    RenameBaseFile(68, NewLevel, OldLevel)
-    Status = Count
-    BaseMin = OldLevel
-  ELSE
-    BaseMin = NewLevel
-  ENDIF
-ENDFUNC
-
 ' Builds F$ for the old root (Which=0) or destination root (Which=1).
 FUNC MakeMoveBasePath(Which, Role, Level)
   IF Which = 0 THEN F$ = OldName$ ELSE F$ = Target$

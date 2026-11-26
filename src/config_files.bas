@@ -137,18 +137,21 @@ FUNC CatalogRewrite(DeleteFlag)
   IF Status <> 1 THEN RETURN
 
   ' Keep the old catalog until the completed temporary file is ready.
+  ' F$ is FILES.DAT, S$ is FILES.TMP and T$ is FILES.BAK.
   T$ = FileDrive$ : T$ =+ "FILES.BAK"
   XIO 33, #1, 0, 0, T$
-  In$ = F$ : In$ =+ ",FILES.BAK"
-  XIO 32, #1, 0, 0, In$
-  Code = ERR()
-  IF Code <> 1 AND Code <> 170 THEN Status = Code : RETURN
-  In$ = S$ : In$ =+ ",FILES.DAT"
-  XIO 32, #1, 0, 0, In$
-  Status = ERR()
+  In$ = S$ : S$ = T$
+  MoveFile()
+  S$ = In$
+  Code = Status
+  IF Code <> 1 AND Code <> 170 THEN RETURN
+  In$ = F$ : F$ = S$ : S$ = In$
+  MoveFile()
   IF Status <> 1 AND Code = 1
-    In$ = T$ : In$ =+ ",FILES.DAT"
-    XIO 32, #1, 0, 0, In$
+    Code = Status
+    F$ = T$
+    MoveFile()
+    Status = Code
   ENDIF
   IF Status = 1 THEN XIO 33, #1, 0, 0, T$
 ENDFUNC
@@ -254,6 +257,31 @@ FUNC CopyFileVerified()
   RETURN 1
 ENDFUNC
 
+' Moves F$ to S$, a full path in the same folder.  SpartaDOS X 4.49e fails
+' every CIO rename (XIO 32) with error 165 (fixed in 4.49f), so when DOS
+' cannot rename, copy and verify the file and then delete F$.  Returns 1
+' when moved; Status is 170 when F$ does not exist.  Uses #1, #2 and
+' AreaLine$; F$ and S$ are kept.
+FUNC MoveFile()
+  LOCAL P
+  P = LEN(S$)
+  DO
+    IF P = 0 THEN EXIT
+    IF PEEK(ADR(S$) + P) = 58 OR PEEK(ADR(S$) + P) = 62 THEN EXIT
+    DEC P
+  LOOP
+  AreaLine$ = F$ : AreaLine$ =+ "," : AreaLine$ =+ S$[P + 1]
+  XIO 32, #1, 0, 0, AreaLine$
+  Status = ERR()
+  IF Status = 1 OR Status = 170 THEN RETURN Status = 1
+  IF NOT CopyFileVerified() THEN RETURN 0
+  XIO 33, #1, 0, 0, F$
+  Status = ERR()
+  IF Status = 1 THEN RETURN 1
+  XIO 33, #2, 0, 0, S$
+  RETURN 0
+ENDFUNC
+
 FUNC AskFileMetadata()
   DO
     PRINT "BBS NAME, 1-7 LETTERS/DIGITS >";
@@ -286,9 +314,7 @@ FUNC RenameControlledFile()
   IF Status <> 1 THEN Status = AreaError : RETURN
   S$ = AreaPath$ : S$ =+ NewName$
   IF F$[1, LEN(F$) - LEN(OldName$)] = S$[1, LEN(S$) - LEN(NewName$)]
-    T$ = F$ : T$ =+ "," : T$ =+ NewName$
-    XIO 32, #1, 0, 0, T$
-    Status = ERR()
+    MoveFile()
   ELSE
     IF NOT CopyFileVerified() THEN RETURN
     Status = 1
@@ -304,8 +330,8 @@ FUNC RollbackControlledRename()
   IF ResolveFileArea(NewArea) <> 1 THEN RETURN
   S$ = AreaPath$ : S$ =+ NewName$
   IF F$[1, LEN(F$) - LEN(OldName$)] = S$[1, LEN(S$) - LEN(NewName$)]
-    T$ = S$ : T$ =+ "," : T$ =+ OldName$
-    XIO 32, #1, 0, 0, T$
+    T$ = F$ : F$ = S$ : S$ = T$
+    MoveFile()
   ELSE
     XIO 33, #1, 0, 0, S$
   ENDIF
@@ -469,8 +495,7 @@ FUNC AddControlledFile()
     IF FileExists() THEN PRINT "TARGET FILE ALREADY EXISTS" : PauseForKey() : RETURN
     F$ = T$
     IF F$[1, LEN(F$) - LEN(OldName$)] = S$[1, LEN(S$) - LEN(NewName$)]
-      T$ = F$ : T$ =+ "," : T$ =+ NewName$
-      XIO 32, #1, 0, 0, T$ : Status = ERR()
+      MoveFile()
     ELSE
       CopyFileVerified()
       IF Status = 1 THEN XIO 33, #1, 0, 0, F$

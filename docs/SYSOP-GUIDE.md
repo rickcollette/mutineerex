@@ -514,6 +514,7 @@ record automatically.
 | `ERROR- 2` immediately when loading CONFIG | The disk has an older CONFIG.COM that used a 16 KB rewrite buffer; rebuild with `python tools/build.py` and copy the new program |
 | `ERROR- 2` immediately when loading a BBS module | A custom build omitted `src/fixed_strings.asm` or was linked below REMMS; rebuild with `python tools/build.py` and copy all five core modules |
 | `ERROR 162 CREATING D1:CALLERS.DAT` during INIT | The disk is full, usually because an older INIT was run again without releasing the existing database chains. Use the current `INIT.COM`; it explicitly deletes `CALLERS.DAT`, `USERS.DAT` and `SYSTEM.MET` before recreating them. |
+| `ERROR 165 CREATING D1:AREAS.CFG` during INIT | SpartaDOS X 4.49e (fixed in 4.49f) cannot rename files from programs, so INIT 1.0.16 and older stop at this step. The current INIT writes `AREAS.CFG` directly, and CONFIG and the game doors copy the file instead whenever a rename fails. Use the current programs, or update SDX to 4.49f or later |
 | `ls -la` shows no files and `INIT` gives error 170 | Rebuild the disk with the current `tools/build.py`, then run `python tools/sdfs.py check disk/mutinrex-eos-v<VERSION>.atr`; Mutineer-eX requires EOSFS v2 revision `$47` |
 | `ls -la` gives a disk error | The work image is damaged. Rebuild it, or use `python tools/sdfs.py check` to identify directory, extent-map or bitmap corruption |
 | `CAN'T OPEN R:` during a call | The R: device stopped answering; the call ends |

@@ -28,8 +28,9 @@ PRINT
 PRINT "CONTINUE (Y/N) >";
 IF NOT InitYes() THEN END
 
+F$ = CfgFile$
 Status = SaveSettings()
-IF Status = 1 THEN Status = InitWriteStartup()
+IF Status = 1 THEN F$ = "D1:eosauto.bat" : Status = InitWriteStartup()
 IF Status <> 1 THEN InitFail() : END
 
 ' Remove every existing message base before making GENERAL (A, level 1).
@@ -156,34 +157,28 @@ ENDFUNC
 FUNC InitWriteAreas()
   LOCAL I, Code
   AreaPath$ = FileDrive$
-  IF NOT NormalizeAreaPath() THEN F$ = "D1:AREAS.CFG" : RETURN 18
+  F$ = "D1:AREAS.CFG"
+  IF NOT NormalizeAreaPath() THEN RETURN 18
+  ' A new board has no registry worth keeping, so write AREAS.CFG in place
+  ' instead of renaming a temporary file: SpartaDOS X 4.49e fails every
+  ' CIO rename (XIO 32) with error 165.  Stale recovery copies go too.
   XIO 33, #1, 0, 0, "D1:AREAS.NEW"
-  OPEN #1, 8, 0, "D1:AREAS.NEW"
+  XIO 33, #1, 0, 0, "D1:AREAS.BAK"
+  XIO 33, #1, 0, 0, F$
+  OPEN #1, 8, 0, F$
   Code = ERR()
-  IF Code <> 1 THEN CLOSE #1 : F$ = "D1:AREAS.NEW" : RETURN Code
+  IF Code <> 1 THEN CLOSE #1 : RETURN Code
   PRINT #1; "MUTINREX AREAS 1"
   FOR I = 0 TO 5
     PRINT #1; "F|"; CHR$(48 + I); "|"; AreaPath$
   NEXT I
   AreaPath$ = MsgDrive$
-  IF NOT NormalizeAreaPath() THEN CLOSE #1 : F$ = "D1:AREAS.CFG" : RETURN 18
+  IF NOT NormalizeAreaPath() THEN CLOSE #1 : XIO 33, #1, 0, 0, F$ : RETURN 18
   PRINT #1; "M|A|1|"; AreaPath$
   Code = ERR()
   CLOSE #1
-  IF Code <> 1 THEN F$ = "D1:AREAS.NEW" : RETURN Code
-  XIO 33, #1, 0, 0, "D1:AREAS.BAK"
-  AreaLine$ = "D1:AREAS.CFG,AREAS.BAK"
-  XIO 32, #1, 0, 0, AreaLine$
-  Code = ERR()
-  IF Code <> 1 AND Code <> 170 THEN F$ = "D1:AREAS.CFG" : RETURN Code
-  AreaLine$ = "D1:AREAS.NEW,AREAS.CFG"
-  XIO 32, #1, 0, 0, AreaLine$
-  Code = ERR()
-  IF Code <> 1
-    AreaLine$ = "D1:AREAS.BAK,AREAS.CFG"
-    XIO 32, #1, 0, 0, AreaLine$
-  ENDIF
-  F$ = "D1:AREAS.CFG"
+  IF Code = 1 THEN Code = ERR()
+  IF Code <> 1 THEN XIO 33, #1, 0, 0, F$
   RETURN Code
 ENDFUNC
 

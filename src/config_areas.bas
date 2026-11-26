@@ -93,21 +93,22 @@ FUNC SaveAreaRegistry(Mode)
 
   ' Preserve the last known-good registry.  If recovery already selected
   ' AREAS.BAK, discard only the malformed live file.
+  ' MoveFile copies when DOS cannot rename (SpartaDOS X 4.49e).
   IF Source = 1
     XIO 33, #7, 0, 0, "D1:AREAS.BAK"
-    AreaLine$ = "D1:AREAS.CFG,AREAS.BAK"
-    XIO 32, #7, 0, 0, AreaLine$
-    Code = ERR()
-    IF Code <> 1 AND Code <> 170 THEN Status = Code : RETURN 0
+    F$ = "D1:AREAS.CFG" : S$ = "D1:AREAS.BAK"
+    MoveFile()
+    IF Status <> 1 AND Status <> 170 THEN RETURN 0
   ELSE
     XIO 33, #7, 0, 0, "D1:AREAS.CFG"
   ENDIF
-  AreaLine$ = "D1:AREAS.NEW,AREAS.CFG"
-  XIO 32, #7, 0, 0, AreaLine$
-  Status = ERR()
-  IF Status <> 1 AND Source = 1
-    AreaLine$ = "D1:AREAS.BAK,AREAS.CFG"
-    XIO 32, #7, 0, 0, AreaLine$
+  F$ = "D1:AREAS.NEW" : S$ = "D1:AREAS.CFG"
+  IF MoveFile() THEN RETURN 1
+  IF Source = 1
+    Code = Status
+    F$ = "D1:AREAS.BAK"
+    MoveFile()
+    Status = Code
   ENDIF
-  RETURN Status = 1
+  RETURN 0
 ENDFUNC

@@ -97,7 +97,9 @@ FUNC SaveDoorScore(Score)
   XIO 32, #FileCh, 0, 0, S$
   Code = ERR()
   IF Code = 1 THEN OldMoved = 1
-  IF Code <> 1 AND Code <> 170 THEN RETURN
+  ' SpartaDOS X 4.49e fails every CIO rename with error 165 (fixed in
+  ' 4.49f).  The list is at most ten lines, so rewrite it in place.
+  IF Code <> 1 AND Code <> 170 THEN CopyDoorScores() : RETURN
 
   S$ = BaseDesc$ : S$ =+ "," : S$ =+ Prompt$
   XIO 32, #FileCh, 0, 0, S$
@@ -108,4 +110,25 @@ FUNC SaveDoorScore(Score)
     RETURN
   ENDIF
   IF Code = 1 THEN XIO 33, #FileCh, 0, 0, T$
+ENDFUNC
+
+' Copies the completed temporary list BaseDesc$ over FileName$.
+FUNC CopyDoorScores()
+  LOCAL Code
+  CLOSE #5
+  OPEN #5, 4, 0, BaseDesc$
+  IF ERR() <> 1 THEN CLOSE #5 : RETURN
+  CLOSE #FileCh
+  XIO 33, #FileCh, 0, 0, FileName$
+  OPEN #FileCh, 8, 0, FileName$
+  Code = ERR()
+  DO
+    IF Code <> 1 THEN EXIT
+    INPUT #5, S$
+    Code = ERR()
+    IF Code = 1 THEN PRINT #FileCh; S$ : Code = ERR()
+  LOOP
+  CLOSE #5
+  CLOSE #FileCh
+  IF Code = 136 THEN XIO 33, #FileCh, 0, 0, BaseDesc$
 ENDFUNC

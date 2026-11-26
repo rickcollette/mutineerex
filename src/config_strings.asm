@@ -29,6 +29,7 @@
         .import fb_var_015_ASKFILEMETADATA_0T
         .import fb_var_017_ADDCONTROLLEDFILE_0T
         .import fb_var_018_EDITCONTROLLEDFILE_0T
+        .import fb_var_020_REMOVECONTROLLEDFILE_0T
 
 .macro bind var, buffer
         lda     #<buffer
@@ -83,6 +84,9 @@
         bind fb_var_015_ASKFILEMETADATA_0T, buf_filemeta_temp
         bind fb_var_017_ADDCONTROLLEDFILE_0T, buf_addfile_temp
         bind fb_var_018_EDITCONTROLLEDFILE_0T, buf_editfile_temp
+        ; The two file-entry commands never nest, and each temporary lives
+        ; for one statement, so they share one buffer.
+        bind fb_var_020_REMOVECONTROLLEDFILE_0T, buf_editfile_temp
         ldx     #0
         rts
 .endproc

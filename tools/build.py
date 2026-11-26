@@ -233,9 +233,9 @@ def audit_packaged_branding(atr, expect_eos):
 EOS_CART_MEMTOP = 0x9C1F
 CONFIG_ARRAY_BYTES = 125 + 125 + 26 + 26 + 26
 CONFIG_HEAP_SAFETY = 1024
-# 31 strings have linked fixed buffers. Two additional compiler string
+# 43 strings have linked fixed buffers. Two additional compiler string
 # slots are borrowed function parameters and never own 256-byte storage.
-CONFIG_FIXED_STRINGS = 44
+CONFIG_FIXED_STRINGS = 45
 WFC_ARRAY_BYTES = 1 + 1 + 26 + 26 + 13
 WFC_HEAP_RESERVE = 2300
 RDCONF_ARRAY_BYTES = 4608 + 186 + 192 + 96 + 255 + 3
