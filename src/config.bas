@@ -40,7 +40,7 @@ ENDIF
 
 DO
   CLS
-  PRINT "     Mutineer-eX 1.0.16 CONFIG"
+  PRINT "     Mutineer-eX 1.0.17 CONFIG"
   PRINT "     ------------------------"
   PRINT
   PRINT " 1 GENERAL CONFIG"
